@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Fast Traders — design tokens
+   Brand palette expressed as HSL triplets so Tailwind can apply opacity
+   modifiers (e.g. `bg-brand-navy/80`).
+
+     navy   #1B2A6B -> 229 60% 26%
+     cyan   #00AEEF -> 196 100% 47%
+     dark   #0F1B4C -> 228 67% 18%
+     bg     #F7F9FC -> 216 45% 98%
+     ink    #1A1A1A -> 0 0% 10%
+     muted  #5A6472 -> 215 12% 40%
+--------------------------------------------------------------------------- */
+
+@layer base {
+  :root {
+    /* Raw brand palette */
+    --brand-navy: 229 60% 26%;
+    --brand-cyan: 196 100% 47%;
+    --brand-dark: 228 67% 18%;
+    --brand-surface: 216 45% 98%;
+    --brand-ink: 0 0% 10%;
+    --brand-muted: 215 12% 40%;
+
+    /* shadcn/ui semantic tokens mapped onto the brand palette */
+    --background: var(--brand-surface);
+    --foreground: var(--brand-ink);
+
+    --card: 0 0% 100%;
+    --card-foreground: var(--brand-ink);
+
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--brand-ink);
+
+    /* Primary = navy. Accent/CTA = cyan. */
+    --primary: var(--brand-navy);
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 216 30% 94%;
+    --secondary-foreground: var(--brand-navy);
+
+    --accent: var(--brand-cyan);
+    --accent-foreground: var(--brand-dark);
+
+    --muted: 216 30% 96%;
+    --muted-foreground: var(--brand-muted);
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 62% 34%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 10%;
+
+    --border: 216 20% 88%;
+    --input: 216 20% 88%;
+    --ring: var(--brand-cyan);
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: var(--brand-dark);
+    --foreground: 0 0% 98%;
+
+    --card: 229 55% 22%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 229 55% 22%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: var(--brand-cyan);
+    --primary-foreground: var(--brand-dark);
+
+    --secondary: 229 45% 30%;
+    --secondary-foreground: 0 0% 98%;
+
+    --accent: var(--brand-cyan);
+    --accent-foreground: var(--brand-dark);
+
+    --muted: 229 40% 28%;
+    --muted-foreground: 216 20% 72%;
+
+    --border: 229 40% 32%;
+    --input: 229 40% 32%;
+    --ring: var(--brand-cyan);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Industrial heading treatment: tight tracking, heavy weight. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading font-bold tracking-tight;
+  }
+
+  /* Visible, WCAG-AA-friendly focus ring on every interactive element. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-cyan ring-offset-2 ring-offset-background;
+  }
+
+  /* Respect reduced-motion preferences (Framer Motion reads this too). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Screen-reader-only helper (used for accessible labels). */
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}

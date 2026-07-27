@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Product image pending">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F1B4C"/>
+      <stop offset="1" stop-color="#1B2A6B"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0v40" fill="none" stroke="#1B2A6B" stroke-opacity="0.06" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="600" height="600" fill="#F7F9FC"/>
+  <rect width="600" height="600" fill="url(#grid)"/>
+
+  <g transform="translate(180 150) scale(10)" fill="none" stroke="url(#g)" stroke-width="1.4"
+     stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+    <rect x="4" y="7" width="16" height="10" rx="1.5"/><path d="M8 11h8"/>
+  </g>
+
+  <rect x="0" y="540" width="600" height="60" fill="#1B2A6B"/>
+  <rect x="0" y="536" width="600" height="4" fill="#00AEEF"/>
+  <text x="300" y="578" text-anchor="middle" font-family="Inter, Arial, sans-serif"
+        font-size="19" font-weight="700" letter-spacing="3" fill="#FFFFFF">FAST TRADERS</text>
+</svg>
