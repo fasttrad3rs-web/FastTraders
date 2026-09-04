@@ -20,7 +20,7 @@ export default function ShippingReturnsPage(): JSX.Element {
           heading: 'Delivery times and charges',
           body: [
             'Lahore: 1–2 working days. Elsewhere in Punjab: 2–4 working days. Rest of Pakistan: 3–6 working days.',
-            'Delivery is charged by destination and is shown at checkout before you confirm. Free delivery applies above the order value thresholds configured in our system — these are displayed at checkout.',
+            'Delivery is charged by destination and is confirmed with your quote, before you commit to anything. Larger orders often carry free delivery — we will tell you when we quote.',
             'Heavy or oversized items such as ACBs, transformers and full cable drums are quoted for freight separately.',
           ],
         },

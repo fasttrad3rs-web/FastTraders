@@ -8,7 +8,7 @@ import { Schema, model, type Model } from 'mongoose';
  * concurrent requests can never collide.
  */
 export interface ICounter {
-  /** e.g. `order:202607`. */
+  /** e.g. `quote:202607`. */
   _id: string;
   seq: number;
 }
@@ -33,7 +33,7 @@ function currentPeriod(date = new Date()): string {
 /**
  * Build the next document number for a scope.
  *
- *   await nextDocumentNumber('order', 'FT')  // -> 'FT-202607-0001'
+ *   await nextDocumentNumber('quote', 'FTQ')  // -> 'FTQ-202607-0001'
  */
 export async function nextDocumentNumber(
   scope: string,

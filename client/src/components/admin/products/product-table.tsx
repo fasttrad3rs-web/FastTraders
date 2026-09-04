@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Copy, Download, MoreHorizontal, Pencil, Trash2, Upload } from 'lucide-react';
-import { Badge, StockBadge } from '@/components/ui/badge';
+import { Copy, Download, EyeOff, MoreHorizontal, Pencil, Trash2, Upload } from 'lucide-react';
+import { ProductDeleteDialogs } from './delete-dialogs';
+import { Badge } from '@/components/ui/badge';
+import { AvailabilityBadge } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/checkbox';
@@ -18,16 +20,16 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, TableSkeleton } from '@/components/ui/feedback';
 import { toast } from '@/components/ui/toast';
-import { ConfirmDialog } from '@/components/admin/primitives';
 import { useProductMutations } from '@/lib/api/admin';
+import { imageProps } from '@/lib/images';
 import { cn, formatPKR } from '@/lib/utils';
-import type { Product } from '@/types';
+import type { AdminProduct } from '@/lib/api/admin';
 
 /** Admin product table: selection, inline status toggle, row actions. */
 
-const MODE_VARIANT = { retail: 'success', quote: 'accent', both: 'default' } as const;
 
-function stockTone(product: Product): string {
+
+function stockTone(product: AdminProduct): string {
   if (product.stock <= 0) return 'text-destructive';
   if (product.stock <= product.lowStockThreshold) return 'text-warning';
   return 'text-foreground';
@@ -39,13 +41,14 @@ export function ProductTable({
   selected,
   onSelectedChange,
 }: {
-  products: Product[];
+  products: AdminProduct[];
   isLoading: boolean;
   selected: string[];
   onSelectedChange: (ids: string[]) => void;
 }): JSX.Element {
   const mutations = useProductMutations();
-  const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<AdminProduct | null>(null);
+  const [pendingPurge, setPendingPurge] = useState<AdminProduct | null>(null);
 
   const allSelected = products.length > 0 && selected.length === products.length;
 
@@ -55,7 +58,7 @@ export function ProductTable({
   const toggleOne = (id: string): void =>
     onSelectedChange(selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
 
-  const toggleActive = (product: Product): void => {
+  const toggleActive = (product: AdminProduct): void => {
     mutations.update.mutate(
       { id: product.id, patch: { isActive: !product.isActive } },
       {
@@ -99,8 +102,8 @@ export function ProductTable({
             <TableHead>Product</TableHead>
             <TableHead className="hidden md:table-cell">Brand</TableHead>
             <TableHead className="hidden lg:table-cell">Category</TableHead>
-            <TableHead>Pricing</TableHead>
-            <TableHead className="text-right">Price</TableHead>
+            <TableHead className="text-center">Sourcing</TableHead>
+            <TableHead className="text-right">Last quoted</TableHead>
             <TableHead className="text-center">Stock</TableHead>
             <TableHead className="text-center">Active</TableHead>
             <TableHead className="w-10" />
@@ -126,7 +129,7 @@ export function ProductTable({
                   <div className="flex items-center gap-3">
                     <span className="relative size-10 shrink-0 overflow-hidden rounded border border-border bg-white">
                       <Image
-                        src={product.images[0]?.url ?? '/placeholders/default.svg'}
+                        {...imageProps(product.images[0]?.url)}
                         alt=""
                         fill
                         sizes="40px"
@@ -148,12 +151,15 @@ export function ProductTable({
                 <TableCell className="hidden md:table-cell text-sm">{brand?.name ?? '—'}</TableCell>
                 <TableCell className="hidden lg:table-cell text-sm">{category?.name ?? '—'}</TableCell>
 
-                <TableCell>
-                  <Badge variant={MODE_VARIANT[product.pricingMode]}>{product.pricingMode}</Badge>
+                <TableCell className="text-center">
+                  <Badge variant={product.isImportItem ? 'accent' : 'muted'}>
+                    {product.isImportItem ? 'To order' : 'Stocked'}
+                  </Badge>
                 </TableCell>
 
+                {/* Internal only — never rendered on the storefront. */}
                 <TableCell className="text-right text-sm tabular-nums">
-                  {typeof product.price === 'number' ? formatPKR(product.price) : '—'}
+                  {typeof product.lastQuotedPrice === 'number' ? formatPKR(product.lastQuotedPrice) : '—'}
                 </TableCell>
 
                 <TableCell className="text-center">
@@ -161,7 +167,7 @@ export function ProductTable({
                     {product.stock}
                   </span>
                   <span className="mt-0.5 block">
-                    <StockBadge status={product.stockStatus} />
+                    <AvailabilityBadge value={product.availability} size="sm" />
                   </span>
                 </TableCell>
 
@@ -211,8 +217,15 @@ export function ProductTable({
                         onSelect={() => setPendingDelete(product)}
                         className="text-destructive focus:text-destructive"
                       >
+                        <EyeOff />
+                        Hide from storefront
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => setPendingPurge(product)}
+                        className="text-destructive focus:text-destructive"
+                      >
                         <Trash2 />
-                        Deactivate
+                        Delete permanently
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -223,21 +236,12 @@ export function ProductTable({
         </TableBody>
       </Table>
 
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
-        title="Deactivate this product?"
-        description={`"${pendingDelete?.name ?? ''}" will be hidden from the storefront. Order history and links keep working — this is a soft delete, not a permanent one.`}
-        confirmLabel="Deactivate"
-        destructive
-        isLoading={mutations.remove.isPending}
-        onConfirm={() => {
-          if (!pendingDelete) return;
-          mutations.remove.mutate(pendingDelete.id, {
-            onSuccess: () => toast.success('Product deactivated'),
-            onError: (error) => toast.error('Could not deactivate', { description: error.message }),
-          });
+      <ProductDeleteDialogs
+        deactivating={pendingDelete}
+        purging={pendingPurge}
+        onClose={() => {
           setPendingDelete(null);
+          setPendingPurge(null);
         }}
       />
     </>

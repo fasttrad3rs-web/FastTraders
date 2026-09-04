@@ -1,0 +1,56 @@
+name: CI
+
+# Runs on every push and every PR. The price-leak suite is the reason this
+# workflow is a required check rather than advisory: a cost figure reaching a
+# competitor's scraper is the one failure nobody would notice in production.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  # A new push supersedes an in-flight run on the same branch.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # 159 tests across 12 suites. Includes price-leak.test.ts, which poisons
+      # every model and asserts no cost data survives to a public response.
+      - name: Test
+        run: npm run test
+
+      - name: Catalogue-pivot and commerce audits
+        run: npm run verify
+
+      - name: Build client
+        run: npm run build:client
+        env:
+          # The build only needs these to be present and well-formed; no real
+          # service is contacted, and no secret belongs in a CI log.
+          NEXT_PUBLIC_API_URL: https://api.example.invalid/api/v1
+          NEXT_PUBLIC_SITE_URL: https://www.fasttraders.co
+
+      # Must follow the build: it reads client/.next.
+      - name: Scan built bundle for admin-only field names
+        run: npm run verify:bundle

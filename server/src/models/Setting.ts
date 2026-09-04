@@ -1,6 +1,6 @@
 import { Schema, model, type HydratedDocument, type Model } from 'mongoose';
 import { jsonTransform } from './shared.schemas';
-import type { BusinessHours, ShippingRule, SocialLinks } from '../types';
+import type { BusinessHours, SocialLinks } from '../types';
 
 /**
  * Site-wide configuration. Enforced singleton: exactly one document with
@@ -27,9 +27,6 @@ export interface ISetting {
   mapEmbedUrl?: string;
   social: SocialLinks;
   businessHours: BusinessHours[];
-  shippingRules: ShippingRule[];
-  /** Default sales-tax percentage, e.g. 18 for 18% GST. */
-  defaultTaxRate: number;
   currency: 'PKR';
   announcement: { text?: string; link?: string; isActive: boolean };
   bankDetails?: IBankDetails;
@@ -45,18 +42,6 @@ const businessHoursSchema = new Schema<BusinessHours>(
     open: { type: String, required: true, trim: true },
     close: { type: String, required: true, trim: true },
     note: { type: String, trim: true },
-  },
-  { _id: false },
-);
-
-const shippingRuleSchema = new Schema<ShippingRule>(
-  {
-    label: { type: String, required: true, trim: true },
-    /** Matches the shipping city; `*` is the catch-all rule. */
-    city: { type: String, required: true, trim: true },
-    cost: { type: Number, required: true, min: 0 },
-    freeAbove: { type: Number, min: 0 },
-    etaDays: { type: String, required: true, trim: true },
   },
   { _id: false },
 );
@@ -87,8 +72,6 @@ const settingSchema = new Schema<ISetting>(
       default: () => ({}),
     },
     businessHours: { type: [businessHoursSchema], default: [] },
-    shippingRules: { type: [shippingRuleSchema], default: [] },
-    defaultTaxRate: { type: Number, default: 18, min: 0, max: 100 },
     currency: { type: String, enum: ['PKR'], default: 'PKR' },
     announcement: {
       type: new Schema(

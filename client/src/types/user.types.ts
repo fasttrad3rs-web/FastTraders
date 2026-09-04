@@ -1,33 +1,13 @@
 /**
- * User & identity types.
+ * Staff identity types.
  * MIRRORED FILE — keep in sync with `server/src/types/user.types.ts`.
  * The client mirror intentionally omits every credential/secret field.
+ *
+ * There is no customer identity. A buyer is represented by the
+ * `customer` block captured on an inquiry, not by an account.
  */
 
-export type UserRole = 'customer' | 'admin' | 'manager';
-
-/** Pakistani provinces / territories, used for shipping address validation. */
-export const PROVINCES = [
-  'Punjab',
-  'Sindh',
-  'Khyber Pakhtunkhwa',
-  'Balochistan',
-  'Gilgit-Baltistan',
-  'Azad Jammu & Kashmir',
-  'Islamabad Capital Territory',
-] as const;
-
-export type Province = (typeof PROVINCES)[number];
-
-export interface Address {
-  label: string;
-  line1: string;
-  line2?: string;
-  city: string;
-  province: Province;
-  postalCode?: string;
-  isDefault: boolean;
-}
+export type UserRole = 'admin' | 'manager';
 
 /** Public-safe user projection returned by the API. */
 export interface User {
@@ -36,11 +16,6 @@ export interface User {
   email: string;
   phone: string;
   role: UserRole;
-  companyName?: string;
-  /** National Tax Number — B2B invoicing. */
-  ntn?: string;
-  addresses: Address[];
-  isEmailVerified: boolean;
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;

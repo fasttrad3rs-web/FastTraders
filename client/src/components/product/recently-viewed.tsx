@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { STORAGE_KEYS } from '@/lib/constants';
-import { formatPKR } from '@/lib/utils';
 import { ProductImage } from './product-image';
 import type { Product } from '@/types';
 
@@ -21,7 +20,6 @@ interface ViewedItem {
   slug: string;
   sku: string;
   image?: string;
-  price?: number;
 }
 
 const MAX_ITEMS = 8;
@@ -49,7 +47,6 @@ export function RecentlyViewed({ current }: { current: Product }): JSX.Element |
       slug: current.slug,
       sku: current.sku,
       ...(current.images[0]?.url ? { image: current.images[0].url } : {}),
-      ...(typeof current.price === 'number' ? { price: current.price } : {}),
     };
 
     try {
@@ -85,9 +82,7 @@ export function RecentlyViewed({ current }: { current: Product }): JSX.Element |
                 className="aspect-square rounded"
               />
               <p className="mt-2 line-clamp-2 text-xs font-medium text-foreground">{item.name}</p>
-              <p className="mt-1 text-xs font-bold text-brand-navy">
-                {typeof item.price === 'number' ? formatPKR(item.price) : 'On request'}
-              </p>
+              <p className="mt-1 text-xs font-semibold text-brand-cyan">Price on request</p>
             </Link>
           </li>
         ))}

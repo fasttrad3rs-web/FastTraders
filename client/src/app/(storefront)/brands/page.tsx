@@ -5,6 +5,7 @@ import { Breadcrumb } from '@/components/ui/pagination';
 import { JsonLd } from '@/components/shared/json-ld';
 import { getBrands } from '@/lib/api/catalog';
 import { breadcrumbSchema, buildMetadata } from '@/lib/seo';
+import { BrandLogo } from '@/components/shared/brand-logo';
 
 export const revalidate = 600;
 
@@ -42,6 +43,16 @@ export default async function BrandsPage(): Promise<JSX.Element> {
               href={`/brands/${brand.slug}`}
               className="group flex h-full flex-col rounded-lg border border-border bg-white p-6 transition-all hover:border-brand-cyan hover:shadow-card-hover"
             >
+              {/* The mark first — a panel builder scans for it before the name. */}
+              <span className="mb-4 flex h-12 w-40 items-center justify-start">
+                <BrandLogo
+                  slug={brand.slug}
+                  name={brand.name}
+                  className="items-center justify-start bg-transparent p-0"
+                  sizes="160px"
+                />
+              </span>
+
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-heading text-lg font-bold uppercase tracking-tight text-brand-navy">

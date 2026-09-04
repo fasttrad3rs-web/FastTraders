@@ -6,7 +6,7 @@ import { Search, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/use-debounce';
 import { mockSearchScopes, mockSuggest, type MockProduct } from '@/lib/mock-data';
-import { cn, formatPKR } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 /**
  * Catalogue search with a scope dropdown and live autocomplete.
@@ -127,7 +127,7 @@ export function SearchBar({ className, autoFocus }: { className?: string; autoFo
           {results.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-muted-foreground">
               No match for “{debounced}”. Try the part number, or{' '}
-              <Link href="/request-quote" className="text-brand-cyan underline">
+              <Link href="/submit-inquiry" className="text-brand-cyan underline">
                 ask us for a quote
               </Link>
               .
@@ -155,13 +155,7 @@ export function SearchBar({ className, autoFocus }: { className?: string; autoFo
                     {product.sku} · {product.brand}
                   </span>
                 </span>
-                <span className="shrink-0 text-sm font-bold text-brand-navy">
-                  {product.pricingMode === 'quote' || !product.price ? (
-                    <span className="text-xs font-semibold text-brand-cyan">On request</span>
-                  ) : (
-                    formatPKR(product.price)
-                  )}
-                </span>
+                <span className="shrink-0 text-xs font-semibold text-brand-cyan">On request</span>
               </Link>
             ))
           )}

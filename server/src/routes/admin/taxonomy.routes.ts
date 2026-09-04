@@ -3,7 +3,6 @@ import {
   bannerAdmin,
   brandAdmin,
   categoryAdmin,
-  couponAdmin,
   type CrudController,
 } from '../../controllers/admin/taxonomy.controller';
 import { validate } from '../../middleware';
@@ -12,14 +11,12 @@ import {
   createBannerSchema,
   createBrandSchema,
   createCategorySchema,
-  createCouponSchema,
   idParamSchema,
   reorderSchema,
   taxonomyQuerySchema,
   updateBannerSchema,
   updateBrandSchema,
   updateCategorySchema,
-  updateCouponSchema,
 } from '../../validators';
 import type { AnyZodObject, ZodTypeAny } from 'zod';
 
@@ -68,8 +65,3 @@ export const bannerRouter = crudRouter(bannerAdmin, {
   query: taxonomyQuerySchema,
 });
 
-export const couponRouter = crudRouter(couponAdmin, {
-  create: createCouponSchema,
-  update: updateCouponSchema,
-  query: taxonomyQuerySchema,
-});

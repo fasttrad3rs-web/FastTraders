@@ -25,7 +25,8 @@ const durationSchema = z
 const envSchema = z.object({
   /* ---------------------------- Core ---------------------------- */
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(5000),
+  /* 5050, not 5000: macOS AirPlay Receiver owns 5000 and the bind fails. */
+  PORT: z.coerce.number().int().positive().default(5050),
 
   /* -------------------------- Database -------------------------- */
   MONGO_URI: z
@@ -62,15 +63,48 @@ const envSchema = z.object({
   SMTP_PASS: z.string().min(1, 'SMTP_PASS is required'),
   SMTP_FROM: z.string().min(1, 'SMTP_FROM is required'),
 
-  /* -------------------------- Payments -------------------------- */
-  STRIPE_SECRET_KEY: z.string().min(1, 'STRIPE_SECRET_KEY is required'),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  /*
+   * No payment keys. The site takes no money — deals are settled at the
+   * counter or by bank transfer, and the bank details live in Settings where
+   * staff can change them without a redeploy.
+   */
 
   /* ----------------------------- Ops ---------------------------- */
   ADMIN_EMAIL: z.string().email('ADMIN_EMAIL must be a valid email address'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'http', 'debug']).default('info'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+
+  /* ------------------------- Optional extras -------------------------- */
+  /*
+   * Everything below is off unless configured, and the app must boot and the
+   * sourcing form must work with all of it absent. That is deliberate: the
+   * client's shop cannot be blocked from taking enquiries because a Twilio
+   * trial expired or a reCAPTCHA key was rotated. Each integration degrades
+   * to "not enabled" and logs once, rather than throwing.
+   */
+
+  /** reCAPTCHA v3. Both halves are required together, or neither. */
+  RECAPTCHA_SECRET_KEY: z.string().min(1).optional(),
+  /** Below this, treat the submission as a bot. Google's own default is 0.5. */
+  RECAPTCHA_MIN_SCORE: z.coerce.number().min(0).max(1).default(0.5),
+
+  /*
+   * On-demand storefront cache invalidation. Both optional: unset simply means
+   * the API never calls the front end, and the catalogue falls back to its ISR
+   * window. Set both in production, or a deactivated product stays visible for
+   * up to five minutes.
+   */
+  REVALIDATE_URL: z.string().url().optional(),
+  REVALIDATE_SECRET: z.string().min(16, 'REVALIDATE_SECRET must be at least 16 characters').optional(),
+
+  /** Twilio WhatsApp/SMS alert to the shop. Optional; email is the fallback. */
+  TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
+  TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
+  /** e.g. `whatsapp:+14155238886` for the sandbox, or a purchased SMS number. */
+  TWILIO_FROM: z.string().min(1).optional(),
+  /** Where the alert goes. Defaults to the shop mobile. */
+  TWILIO_ALERT_TO: z.string().min(1).default('+923244234990'),
 });
 
 export type Env = z.infer<typeof envSchema>;

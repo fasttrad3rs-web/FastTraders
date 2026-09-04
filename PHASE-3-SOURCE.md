@@ -1,4 +1,10 @@
 # Fast Traders — Phase 3 source dump
+
+> **Superseded.** This document describes the site before the catalogue-only
+> pivot — it still refers to prices, carts, checkout, payments, orders or
+> customer accounts, none of which exist any more. Kept as build history.
+> See [`CATALOG-PIVOT.md`](./CATALOG-PIVOT.md) for the current model.
+
 Every route, controller, service, middleware and validator built in Phase 3,
 plus the Phase 1 middleware and utils they build on.
 Total files: 67

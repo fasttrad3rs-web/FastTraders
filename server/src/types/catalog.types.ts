@@ -1,7 +1,8 @@
 /**
  * Catalogue types: Category, Brand, Product.
  * MIRRORED FILE — keep in sync with `client/src/types/catalog.types.ts`.
- * NOTE: `costPrice` is server-only and must never appear in the client mirror.
+ * NOTE: no price of any kind appears on this shape. Fast Traders publishes
+ * no prices; every product routes to an inquiry.
  */
 
 /** Search-engine metadata attached to catalogue entities. */
@@ -48,10 +49,18 @@ export interface Brand {
   updatedAt: string;
 }
 
-/** Hybrid commerce switch — drives which cart a product can enter. */
-export type PricingMode = 'retail' | 'quote' | 'both';
-
-export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock' | 'on_order';
+/**
+ * What a buyer is told instead of a stock count.
+ *
+ * A number on the shelf is staff data and, for an importer, usually a lie by
+ * the time anyone reads it. These four say the thing the buyer is actually
+ * asking: can I collect it today, will you order it in, or is it gone.
+ */
+export type Availability =
+  | 'ready_stock'
+  | 'available_on_order'
+  | 'import_on_request'
+  | 'discontinued';
 
 export type ProductUnit = 'piece' | 'meter' | 'roll' | 'box' | 'set';
 
@@ -75,8 +84,7 @@ export interface ProductVariant {
   sku: string;
   /** Free-form attribute map, e.g. { poles: '3P', rating: '100A' }. */
   attributes: Record<string, string>;
-  price?: number;
-  stock: number;
+  /* No price and no stock — both are admin-only. See the note on `Product`. */
   image?: string;
 }
 
@@ -99,17 +107,15 @@ export interface Product {
   subCategory?: string | Category | null;
   brand: string | Brand;
 
-  pricingMode: PricingMode;
-  /** Absent on `quote`-only products. */
-  price?: number;
-  /** Struck-through "was" price. */
-  comparePrice?: number;
-  taxRate: number;
-  currency: 'PKR';
-
-  stock: number;
-  lowStockThreshold: number;
-  stockStatus: StockStatus;
+  /**
+   * CATALOGUE-ONLY: no price, cost, stock count or supplier note appears on
+   * this shape. They exist on the server for quoting and are removed by
+   * `toPublicJSON()`, so a component cannot render one even by mistake.
+   */
+  availability: Availability;
+  /** Free text, e.g. "2-3 days" or "3-4 weeks (imported)". */
+  leadTime?: string;
+  isImportItem: boolean;
   unit: ProductUnit;
   minOrderQty: number;
 
@@ -123,14 +129,9 @@ export interface Product {
   isFeatured: boolean;
   isNewArrival: boolean;
   isBestSeller: boolean;
-  isActive: boolean;
 
-  ratingAvg: number;
-  reviewCount: number;
   viewCount: number;
-  salesCount: number;
 
   seo: Seo;
   createdAt: string;
-  updatedAt: string;
 }

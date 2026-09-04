@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Minus, Plus, Star } from 'lucide-react';
-import { cn, formatPKR } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 /** Commerce-specific primitives: rating, quantity stepper, price display. */
 
@@ -116,57 +116,33 @@ export function QuantityStepper({
 }
 
 /**
- * Price display. On `quote`-only products there is no figure to show, so the
- * component renders the call-to-action wording instead of an empty space.
+ * Availability label.
+ *
+ * Replaces `PriceDisplay`. Fast Traders publishes no prices, so the slot where
+ * a price would sit carries the call to action instead — "Price on request"
+ * next to a phone number converts better than a blank space.
  */
-export function PriceDisplay({
-  price,
-  comparePrice,
-  pricingMode,
+export function AvailabilityNote({
+  isMadeToOrder,
   size = 'md',
-  unit,
   className,
 }: {
-  price?: number;
-  comparePrice?: number;
-  pricingMode: 'retail' | 'quote' | 'both';
+  isMadeToOrder?: boolean;
   size?: 'sm' | 'md' | 'lg';
-  unit?: string;
   className?: string;
 }): JSX.Element {
-  const sizes = {
-    sm: { main: 'text-base', old: 'text-xs' },
-    md: { main: 'text-xl', old: 'text-sm' },
-    lg: { main: 'text-3xl', old: 'text-base' },
-  }[size];
-
-  if (pricingMode === 'quote' || typeof price !== 'number') {
-    return (
-      <span className={cn('font-heading font-bold text-brand-cyan', sizes.main, className)}>
-        Price on request
-      </span>
-    );
-  }
-
-  const discount =
-    comparePrice && comparePrice > price ? Math.round(((comparePrice - price) / comparePrice) * 100) : 0;
+  const scale = { sm: 'text-sm', md: 'text-base', lg: 'text-xl' }[size];
 
   return (
-    <div className={cn('flex flex-wrap items-baseline gap-2', className)}>
-      <span className={cn('font-heading font-bold tabular-nums text-brand-navy', sizes.main)}>
-        {formatPKR(price)}
+    <div className={cn('space-y-0.5', className)}>
+      <span className={cn('block font-heading font-bold text-brand-cyan', scale)}>
+        Price on request
       </span>
-      {unit ? <span className="text-xs text-muted-foreground">/ {unit}</span> : null}
-      {discount > 0 && comparePrice ? (
-        <>
-          <span className={cn('text-muted-foreground line-through tabular-nums', sizes.old)}>
-            {formatPKR(comparePrice)}
-          </span>
-          <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-2xs font-bold text-destructive">
-            −{discount}%
-          </span>
-        </>
-      ) : null}
+      <span className="block text-2xs text-muted-foreground">
+        {isMadeToOrder
+          ? 'Sourced to order — we will confirm price and lead time'
+          : 'Call, WhatsApp or send an enquiry for a quotation'}
+      </span>
     </div>
   );
 }

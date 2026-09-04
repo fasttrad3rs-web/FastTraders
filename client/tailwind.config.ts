@@ -117,7 +117,16 @@ const config: Config = {
         focus: '0 0 0 3px hsl(var(--brand-cyan) / 0.35)',
       },
       maxWidth: { container: '1400px' },
-      zIndex: { header: '50', drawer: '60', modal: '70', toast: '80' },
+      /*
+       * `drawer` is deliberately gone.
+       *
+       * It sat at 60, below the modal overlay at 70 — so any drawer using it
+       * rendered *behind* the overlay and had the overlay's tint and
+       * `backdrop-blur` applied to itself. Radix portals the overlay and the
+       * panel as siblings, so both belong on `modal` and DOM order does the
+       * layering. A separate, lower drawer level only invites that bug back.
+       */
+      zIndex: { header: '50', modal: '70', toast: '80' },
 
       keyframes: {
         'accordion-down': {

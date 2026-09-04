@@ -8,6 +8,7 @@ import type {
   ProductListResponse,
   Setting,
   Product,
+  Testimonial,
 } from './types';
 
 /**
@@ -15,31 +16,50 @@ import type {
  * Each maps 1:1 to a Phase 3 endpoint.
  */
 
+/**
+ * Mirrors `productQuerySchema` in server/src/validators/catalog.validators.ts.
+ * Anything not listed there is stripped by Zod, and an unknown `sort` is a 422
+ * — so these two must be kept in step.
+ */
 export interface ProductQueryParams {
   page?: number;
   limit?: number;
-  sort?: 'newest' | 'price_asc' | 'price_desc' | 'popular' | 'name';
+  /** No price sorts: ordering by a hidden field would leak it. */
+  sort?: 'newest' | 'name_asc' | 'name_desc' | 'popular';
   category?: string;
   brand?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  inStock?: boolean;
-  pricingMode?: 'retail' | 'quote' | 'both';
+  availability?: 'ready_stock' | 'available_on_order' | 'import_on_request' | 'discontinued';
   isFeatured?: boolean;
+  /** Import-items-only toggle. Only ever sent as `true`. */
+  isImportItem?: boolean;
   tags?: string;
   search?: string;
   specs?: string;
 }
 
+/*
+ * Every product list carries the `products` tag so an admin write can flush it.
+ *
+ * Without it the homepage rails were cached for the full `revalidate` window
+ * with no way to invalidate them, so a product deactivated in the admin stayed
+ * on the storefront for up to five minutes. Callers can still add their own
+ * tags; this one is always present.
+ */
 export function getProducts(
   params: ProductQueryParams = {},
   options?: FetchOptions,
 ): Promise<ProductListResponse | null> {
-  return serverFetch<ProductListResponse>(`/products${toQuery({ ...params })}`, options);
+  return serverFetch<ProductListResponse>(`/products${toQuery({ ...params })}`, {
+    ...options,
+    tags: ['products', ...(options?.tags ?? [])],
+  });
 }
 
 export function getProduct(slug: string): Promise<ProductDetailResponse | null> {
-  return serverFetch<ProductDetailResponse>(`/products/${slug}`, { tags: [`product:${slug}`] });
+  return serverFetch<ProductDetailResponse>(`/products/${slug}`, {
+    // `products` too: deactivating an item must drop its detail page as well.
+    tags: ['products', `product:${slug}`],
+  });
 }
 
 export function getSimilarProducts(id: string, limit = 8): Promise<Product[] | null> {
@@ -65,6 +85,16 @@ export function getBanners(position?: 'hero' | 'strip' | 'sidebar'): Promise<Ban
     // Promotions change more often than the catalogue.
     revalidate: 60,
     tags: ['banners'],
+  });
+}
+
+/**
+ * Published testimonials. Pass a product id to get only the quotes attached to
+ * that product; omit it for the homepage strip.
+ */
+export function getTestimonials(product?: string, limit = 12): Promise<Testimonial[] | null> {
+  return serverFetch<Testimonial[]>(`/testimonials${toQuery({ product, limit })}`, {
+    tags: ['testimonials'],
   });
 }
 

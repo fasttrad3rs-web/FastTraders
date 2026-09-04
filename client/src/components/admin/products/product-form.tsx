@@ -5,26 +5,28 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, Save } from 'lucide-react';
-import { Badge, StockBadge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { PriceDisplay } from '@/components/ui/commerce';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert } from '@/components/ui/alert';
 import { toast } from '@/components/ui/toast';
 import { ProductImageManager } from './image-manager';
-import { BasicTab, PricingTab, RepeaterTab, SeoTab } from './form-tabs';
+import { BasicTab } from './form-tab-basic';
+import { PricingTab, RepeaterTab, SeoTab } from './form-tabs';
 import { productFormSchema, slugFromName, toApiPayload, type ProductFormValues } from './form-schema';
 import { useProductMutations, useTaxonomy } from '@/lib/api/admin';
-import type { Product } from '@/types';
+import type { AdminProduct } from '@/lib/api/admin';
+import { AvailabilityBadge } from '@/components/shared/availability-badge';
 
 /**
  * Product create/edit form.
  *
  * Seven tabs plus a live preview column showing the card as a shopper will see
  * it — which is the fastest way to catch a wrong pricing mode or a missing
- * price before saving.
+ * lastQuotedPrice before saving.
  */
-export function ProductForm({ product }: { product?: Product }): JSX.Element {
+export function ProductForm({ product }: { product?: AdminProduct }): JSX.Element {
   const router = useRouter();
   const mutations = useProductMutations();
   const categories = useTaxonomy('categories');
@@ -32,7 +34,9 @@ export function ProductForm({ product }: { product?: Product }): JSX.Element {
 
   const isEdit = product !== undefined;
 
-  const form = useForm<ProductFormValues>({
+  // The resolver is typed against the *output* shape; RHF holds the input
+  // shape. Casting here is narrower than loosening either generic.
+  const form = useForm<ProductFormValues, unknown, ProductFormValues>({
     resolver: zodResolver(productFormSchema),
     defaultValues: product
       ? {
@@ -46,10 +50,11 @@ export function ProductForm({ product }: { product?: Product }): JSX.Element {
           subCategory:
             product.subCategory && typeof product.subCategory !== 'string' ? product.subCategory.id : '',
           brand: typeof product.brand === 'string' ? product.brand : product.brand.id,
-          pricingMode: product.pricingMode,
-          price: product.price,
-          comparePrice: product.comparePrice,
-          taxRate: product.taxRate,
+          lastQuotedPrice: product.lastQuotedPrice,
+          internalCost: product.internalCost,
+          availability: product.availability,
+          leadTime: product.leadTime ?? '',
+          isImportItem: product.isImportItem,
           stock: product.stock,
           lowStockThreshold: product.lowStockThreshold,
           unit: product.unit,
@@ -73,8 +78,8 @@ export function ProductForm({ product }: { product?: Product }): JSX.Element {
           seoKeywords: product.seo?.keywords.join(', ') ?? '',
         }
       : {
-          pricingMode: 'retail',
-          taxRate: 18,
+          availability: 'available_on_order' as const,
+          isImportItem: false,
           stock: 0,
           lowStockThreshold: 5,
           unit: 'piece',
@@ -214,28 +219,31 @@ export function ProductForm({ product }: { product?: Product }): JSX.Element {
               <span className="truncate text-2xs font-bold uppercase text-brand-cyan">
                 {brands.data?.find((brand) => brand.id === watch('brand'))?.name ?? 'Brand'}
               </span>
-              <StockBadge
-                status={
-                  watch('stock') <= 0
-                    ? 'out_of_stock'
-                    : watch('stock') <= watch('lowStockThreshold')
-                      ? 'low_stock'
-                      : 'in_stock'
-                }
-              />
+              {/*
+                The SAME badge the storefront renders, from the SAME field.
+                This used to derive a stock-level badge from `stock`, so the
+                preview said "IN STOCK" for a product the public page called
+                "Available on Order" — two vocabularies, two fields, one of
+                them not even shown to buyers. A preview that disagrees with
+                the page it previews is worse than no preview.
+              */}
+              <AvailabilityBadge value={watch('availability')} size="sm" />
             </div>
             <p className="mt-1.5 line-clamp-2 text-sm font-semibold text-foreground">
               {name || 'Product name'}
             </p>
             <p className="mt-0.5 font-mono text-2xs text-muted-foreground">{watch('sku') || 'SKU'}</p>
+            {/* The storefront shows no price, so the preview shows what a
+                shopper actually sees. */}
             <div className="mt-3">
-              <PriceDisplay
-                price={watch('price')}
-                comparePrice={watch('comparePrice')}
-                pricingMode={watch('pricingMode')}
-                size="sm"
-                unit={watch('unit')}
-              />
+              <span className="block font-heading text-sm font-bold text-brand-cyan">
+                Price on request
+              </span>
+              {typeof watch('lastQuotedPrice') === 'number' ? (
+                <span className="mt-0.5 block text-2xs text-muted-foreground">
+                  Internal: Rs. {Number(watch('lastQuotedPrice')).toLocaleString('en-US')}
+                </span>
+              ) : null}
             </div>
             <div className="mt-3 flex flex-wrap gap-1">
               {watch('isActive') ? null : <Badge variant="muted">Inactive</Badge>}

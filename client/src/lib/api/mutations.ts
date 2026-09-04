@@ -1,130 +1,116 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from '@tanstack/react-query';
+import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 import { apiClient, unwrap } from '@/lib/api-client';
-import type { CartSummary, OrderResponse, QuotationResponse } from './cart.types';
 
 /**
- * Client mutations and user-scoped queries.
+ * Write operations. There is essentially one: submitting an inquiry.
  *
- * The server owns both carts (Phase 3 persists them against a user or a guest
- * `ft_session_id` cookie), so these hooks are the source of truth and the
- * Zustand store is only a fast-render mirror.
+ * The shortlist itself no longer round-trips. It lives in `inquiryStore`,
+ * persisted to localStorage, because a visitor has no account and the guest
+ * cookie the server keys on is the first thing a phone browser drops — losing
+ * a list somebody spent ten minutes building loses the inquiry with it.
+ *
+ * The submission sends the store's items explicitly. The server takes the
+ * body's list when it is present and falls back to its own session copy
+ * otherwise, so a cleared cookie no longer means an empty inquiry. Only ids,
+ * quantities and notes are sent — the server re-reads names and SKUs, so the
+ * payload cannot mislabel a line.
  */
 
-export const cartKeys = {
-  shopping: ['cart', 'shopping'] as const,
-  inquiry: ['cart', 'inquiry'] as const,
-  orders: ['account', 'orders'] as const,
-  quotations: ['account', 'quotations'] as const,
-  me: ['auth', 'me'] as const,
-};
+export interface InquiryCustomerInput {
+  name: string;
+  phone: string;
+  whatsapp?: string;
+  email?: string;
+  company?: string;
+  city?: string;
+  designation?: string;
+}
 
-type CartKind = 'shopping' | 'inquiry';
-const basePath = (kind: CartKind): string => (kind === 'shopping' ? '/cart' : '/inquiry');
-const keyFor = (kind: CartKind): readonly string[] => (kind === 'shopping' ? cartKeys.shopping : cartKeys.inquiry);
+/** Only what the server is willing to trust from the client. */
+export interface SubmitInquiryItem {
+  product: string;
+  qty: number;
+  note?: string;
+}
 
-export function useCart(kind: CartKind): UseQueryResult<CartSummary> {
-  return useQuery({
-    queryKey: keyFor(kind),
-    queryFn: async () => unwrap(await apiClient.get<CartSummary>(`${basePath(kind)}/items`)),
-    staleTime: 0,
+export interface SubmitInquiryInput {
+  customer: InquiryCustomerInput;
+  items?: SubmitInquiryItem[];
+  message?: string;
+  preferredContactMethod?: 'phone' | 'whatsapp' | 'email';
+  preferredContactTime?: string;
+  /** The honeypot. A real browser always submits this empty. */
+  website?: string;
+}
+
+export interface InquiryReceipt {
+  inquiryNumber: string;
+  itemCount: number;
+}
+
+export function useSubmitInquiry(): UseMutationResult<InquiryReceipt, Error, SubmitInquiryInput> {
+  return useMutation({
+    mutationFn: async (input) => unwrap(await apiClient.post<InquiryReceipt>('/inquiries', input)),
   });
 }
 
-export interface CartMutationApi {
-  add: UseMutationResult<CartSummary, Error, { product: string; qty: number; note?: string }>;
-  update: UseMutationResult<CartSummary, Error, { productId: string; qty?: number; note?: string }>;
-  remove: UseMutationResult<CartSummary, Error, string>;
-  clear: UseMutationResult<CartSummary, Error, void>;
-}
-
-export function useCartMutations(kind: CartKind): CartMutationApi {
-  const queryClient = useQueryClient();
-  const key = keyFor(kind);
-  const path = basePath(kind);
-
-  // Every mutation returns the freshly hydrated cart, so we seed the cache
-  // directly instead of triggering a second round trip.
-  const onSuccess = (data: CartSummary): void => {
-    queryClient.setQueryData(key, data);
+/** Mirrors `sourcingInquirySchema` on the server. */
+export interface SourcingInquiryInput extends SubmitInquiryInput {
+  sourcingDetails: {
+    itemDescription: string;
+    preferredBrand?: string;
+    partNumber?: string;
+    specifications?: string;
+    quantity?: number;
+    unit?: string;
+    /** ISO date; the server coerces it. */
+    targetDate?: string;
+    urgency?: 'standard' | 'urgent';
+    isRepeatRequirement?: boolean;
+    application?: string;
   };
-
-  return {
-    add: useMutation({
-      mutationFn: async (input) => unwrap(await apiClient.post<CartSummary>(`${path}/items`, input)),
-      onSuccess,
-    }),
-    update: useMutation({
-      mutationFn: async ({ productId, ...patch }) =>
-        unwrap(await apiClient.patch<CartSummary>(`${path}/items/${productId}`, patch)),
-      onSuccess,
-    }),
-    remove: useMutation({
-      mutationFn: async (productId) =>
-        unwrap(await apiClient.delete<CartSummary>(`${path}/items/${productId}`)),
-      onSuccess,
-    }),
-    clear: useMutation({
-      mutationFn: async () => unwrap(await apiClient.delete<CartSummary>(`${path}/items`)),
-      onSuccess,
-    }),
-  };
+  /** reCAPTCHA v3, only present when the site key is configured. */
+  recaptchaToken?: string;
 }
 
-/* -------------------------------- Orders --------------------------------- */
+export interface SourcingReceipt {
+  inquiryNumber: string;
+  /** How many attachments survived the server's signature check. */
+  attachmentsAccepted: number;
+  /** Files the server refused, with the reason, so we can say so plainly. */
+  attachmentsRejected: { name: string; reason: string }[];
+}
 
-export function useCreateOrder(): UseMutationResult<OrderResponse, Error, Record<string, unknown>> {
-  const queryClient = useQueryClient();
-
+/**
+ * A sourcing request, with or without files.
+ *
+ * With attachments it goes as multipart: one `payload` part holding exactly
+ * the JSON the request would otherwise have been, plus the files. Flattening
+ * the nested shape into `sourcingDetails[quantity]` field names would mean a
+ * second schema on the server that drifts from the first, and hand-coercing
+ * every number and boolean back from a string on arrival.
+ *
+ * With no attachments it stays plain JSON — no reason to make the common case
+ * pay for the rare one.
+ */
+export function useSubmitSourcingInquiry(): UseMutationResult<
+  SourcingReceipt,
+  Error,
+  SourcingInquiryInput & { attachments?: File[] }
+> {
   return useMutation({
-    mutationFn: async (input) => unwrap(await apiClient.post<OrderResponse>('/orders', input)),
-    onSuccess: () => {
-      // The server empties the cart on success; drop our copy too.
-      queryClient.removeQueries({ queryKey: cartKeys.shopping });
-      void queryClient.invalidateQueries({ queryKey: cartKeys.orders });
+    mutationFn: async ({ attachments, ...input }) => {
+      if (!attachments || attachments.length === 0) {
+        return unwrap(await apiClient.post<SourcingReceipt>('/inquiries/sourcing', input));
+      }
+
+      const form = new FormData();
+      form.append('payload', JSON.stringify(input));
+      attachments.forEach((file) => form.append('attachments', file));
+
+      return unwrap(await apiClient.post<SourcingReceipt>('/inquiries/sourcing', form));
     },
-  });
-}
-
-export function useCreateQuotation(): UseMutationResult<
-  QuotationResponse,
-  Error,
-  Record<string, unknown>
-> {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (input) => unwrap(await apiClient.post<QuotationResponse>('/quotations', input)),
-    onSuccess: () => {
-      queryClient.removeQueries({ queryKey: cartKeys.inquiry });
-      void queryClient.invalidateQueries({ queryKey: cartKeys.quotations });
-    },
-  });
-}
-
-export function useRespondToQuotation(): UseMutationResult<
-  QuotationResponse,
-  Error,
-  { id: string; action: 'accept' | 'reject' | 'counter'; message?: string }
-> {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, ...body }) =>
-      unwrap(await apiClient.post<QuotationResponse>(`/quotations/${id}/respond`, body)),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: cartKeys.quotations }),
-  });
-}
-
-/** Guest order lookup — number plus the email used at checkout. */
-export function useTrackOrder(): UseMutationResult<
-  OrderResponse,
-  Error,
-  { orderNumber: string; email: string }
-> {
-  return useMutation({
-    mutationFn: async ({ orderNumber, email }) =>
-      unwrap(await apiClient.get<OrderResponse>(`/orders/${orderNumber}`, { params: { email } })),
   });
 }

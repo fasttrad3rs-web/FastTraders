@@ -18,12 +18,6 @@ export const settings: Omit<ISetting, 'createdAt' | 'updatedAt'> = {
     { days: 'Friday', open: '10:00', close: '19:00', note: 'Closed 13:00 – 14:30 for Jumu\'ah' },
     { days: 'Sunday', open: 'Closed', close: 'Closed' },
   ],
-  shippingRules: [
-    { label: 'Lahore city delivery', city: 'Lahore', cost: 300, freeAbove: 20000, etaDays: '1 – 2 working days' },
-    { label: 'Punjab (outside Lahore)', city: 'Punjab', cost: 700, freeAbove: 50000, etaDays: '2 – 4 working days' },
-    { label: 'Rest of Pakistan', city: '*', cost: 1200, freeAbove: 75000, etaDays: '3 – 6 working days' },
-  ],
-  defaultTaxRate: 18,
   currency: 'PKR',
   announcement: {
     text: 'Same-day collection available from our Bull Road counter — call +92 324 4234990.',

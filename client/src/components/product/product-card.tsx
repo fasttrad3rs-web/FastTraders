@@ -1,8 +1,7 @@
 import Link from 'next/link';
-import { FileText, ShoppingCart } from 'lucide-react';
+import { FileText, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StockBadge } from '@/components/ui/badge';
-import { PriceDisplay, Rating } from '@/components/ui/commerce';
+import { AvailabilityBadge, PriceOnRequest } from '@/components/shared';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types';
 import { ProductImage } from './product-image';
@@ -11,7 +10,7 @@ import { ProductImage } from './product-image';
  * Catalogue product card.
  *
  * A Server Component: the card itself is static markup, and only the buttons
- * (in `product-actions.tsx`) need client interactivity. That keeps the grid
+ * (the shared contact components) need client interactivity. That keeps the grid
  * cheap to render on a 3G connection.
  */
 
@@ -30,8 +29,6 @@ export function ProductCard({
 }): JSX.Element {
   const brand = brandOf(product);
   const href = `/products/${product.slug}`;
-  const buyable = product.pricingMode !== 'quote';
-  const quotable = product.pricingMode !== 'retail';
 
   if (layout === 'list') {
     return (
@@ -40,6 +37,7 @@ export function ProductCard({
           <ProductImage
             image={product.images[0]}
             sku={product.sku}
+            brand={brand}
             sizes="140px"
             priority={priority}
             className="size-32 rounded-md border border-border"
@@ -56,13 +54,8 @@ export function ProductCard({
           ) : null}
 
           <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-3">
-            <PriceDisplay
-              price={product.price}
-              comparePrice={product.comparePrice}
-              pricingMode={product.pricingMode}
-              unit={product.unit}
-            />
-            <CardActions href={href} buyable={buyable} quotable={quotable} />
+            <PriceOnRequest product={product} size="sm" actions={false} />
+            <CardActions href={href} />
           </div>
         </div>
       </article>
@@ -75,13 +68,14 @@ export function ProductCard({
         <ProductImage
           image={product.images[0]}
           sku={product.sku}
+          brand={brand}
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           priority={priority}
           className="size-full transition-transform duration-300 group-hover:scale-[1.03]"
         />
-        {product.comparePrice && product.price && product.comparePrice > product.price ? (
-          <span className="absolute left-2 top-2 rounded bg-destructive px-1.5 py-0.5 text-2xs font-bold text-white">
-            −{Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)}%
+        {product.isImportItem ? (
+          <span className="absolute left-2 top-2 rounded bg-brand-navy px-1.5 py-0.5 text-2xs font-bold text-white">
+            Imported
           </span>
         ) : null}
       </Link>
@@ -92,22 +86,13 @@ export function ProductCard({
           {product.name}
         </Link>
 
-        {product.reviewCount > 0 ? (
-          <Rating value={product.ratingAvg} count={product.reviewCount} size="sm" className="mt-2" />
-        ) : null}
 
         <div className="mt-3">
-          <PriceDisplay
-            price={product.price}
-            comparePrice={product.comparePrice}
-            pricingMode={product.pricingMode}
-            size="sm"
-            unit={product.unit}
-          />
+          <PriceOnRequest product={product} size="sm" actions={false} />
         </div>
 
         <div className="mt-auto pt-4">
-          <CardActions href={href} buyable={buyable} quotable={quotable} block />
+          <CardActions href={href} block />
         </div>
       </div>
     </article>
@@ -133,45 +118,31 @@ function ProductMeta({
       ) : (
         <span />
       )}
-      <StockBadge status={product.stockStatus} />
+      <AvailabilityBadge value={product.availability} size="sm" />
     </div>
   );
 }
 
 /**
- * Both calls to action are links to the detail page rather than direct
- * cart mutations: a trade buyer almost always wants to check the rating and
- * poles before committing, and it keeps the grid a Server Component.
+ * Both actions route to the detail page rather than firing an enquiry from the
+ * grid — a buyer almost always wants the specifications before asking, and it
+ * keeps the grid a Server Component.
  */
-function CardActions({
-  href,
-  buyable,
-  quotable,
-  block,
-}: {
-  href: string;
-  buyable: boolean;
-  quotable: boolean;
-  block?: boolean;
-}): JSX.Element {
+function CardActions({ href, block }: { href: string; block?: boolean }): JSX.Element {
   return (
     <div className={cn('flex gap-2', block && 'flex-col')}>
-      {buyable ? (
-        <Button asChild variant="cta" size="sm" block={block}>
-          <Link href={href}>
-            <ShoppingCart />
-            View &amp; buy
-          </Link>
-        </Button>
-      ) : null}
-      {quotable ? (
-        <Button asChild variant={buyable ? 'outline' : 'cta'} size="sm" block={block}>
-          <Link href={`${href}#request-quote`}>
-            <FileText />
-            {buyable ? 'Bulk price' : 'Request quote'}
-          </Link>
-        </Button>
-      ) : null}
+      <Button asChild variant="cta" size="sm" block={block}>
+        <Link href={href}>
+          <FileText />
+          Enquire
+        </Link>
+      </Button>
+      <Button asChild variant="outline" size="sm" block={block}>
+        <Link href={`${href}#enquire`}>
+          <MessageCircle />
+          Ask price
+        </Link>
+      </Button>
     </div>
   );
 }

@@ -1,4 +1,10 @@
 # Fast Traders — Phase 7B source dump
+
+> **Superseded.** This document describes the site before the catalogue-only
+> pivot — it still refers to prices, carts, checkout, payments, orders or
+> customer accounts, none of which exist any more. Kept as build history.
+> See [`CATALOG-PIVOT.md`](./CATALOG-PIVOT.md) for the current model.
+
 Quote builder plus the remaining twelve admin screens.
 Total files: 17
 

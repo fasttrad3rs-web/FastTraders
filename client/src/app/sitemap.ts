@@ -14,16 +14,27 @@ export const revalidate = 3600;
 const MAX_PRODUCTS = 5000;
 const PAGE_SIZE = 100;
 
+/*
+ * `/submit-inquiry` and `/inquiry-list` are deliberately absent: both are
+ * meaningless without a shortlist in the visitor's own browser, so a crawler
+ * would index a page that says "there is nothing on your list yet".
+ * `robots.ts` blocks them and the pages carry `noindex` — all three have to
+ * agree, and the verification harness checks that they do.
+ */
 const STATIC_ROUTES: { path: string; priority: number; frequency: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
   { path: '/', priority: 1, frequency: 'daily' },
   { path: '/products', priority: 0.9, frequency: 'daily' },
+  /*
+   * Indexed, unlike /submit-inquiry: "where to buy <obsolete part> in Lahore"
+   * is exactly the search this page answers, and sourcing is a real service
+   * rather than a per-visitor form.
+   */
+  { path: '/source-from-china', priority: 0.8, frequency: 'monthly' },
   { path: '/brands', priority: 0.7, frequency: 'weekly' },
   { path: '/industries', priority: 0.6, frequency: 'monthly' },
   { path: '/about', priority: 0.6, frequency: 'monthly' },
   { path: '/contact', priority: 0.7, frequency: 'monthly' },
-  { path: '/request-quote', priority: 0.8, frequency: 'monthly' },
   { path: '/faq', priority: 0.5, frequency: 'monthly' },
-  { path: '/track-order', priority: 0.5, frequency: 'yearly' },
   { path: '/shipping-returns', priority: 0.4, frequency: 'yearly' },
   { path: '/privacy-policy', priority: 0.3, frequency: 'yearly' },
   { path: '/terms', priority: 0.3, frequency: 'yearly' },
@@ -72,7 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const product of result.items) {
       entries.push({
         url: `${SITE.url}/products/${product.slug}`,
-        lastModified: product.updatedAt ? new Date(product.updatedAt) : now,
+        lastModified: product.createdAt ? new Date(product.createdAt) : now,
         changeFrequency: 'weekly',
         priority: product.isFeatured ? 0.8 : 0.7,
       });

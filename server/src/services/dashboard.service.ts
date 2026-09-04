@@ -1,165 +1,148 @@
-import type { PipelineStage, Types } from 'mongoose';
-import { Contact, Order, Product, Quotation, Review, User } from '../models';
+import { Contact, Inquiry, InquiryList, Product, Testimonial } from '../models';
+import { getPipelineSignals } from './dashboard.pipeline';
 
 /**
  * Dashboard KPIs.
  *
- * "Revenue" counts only orders that were actually paid for or delivered —
- * cancelled and returned orders are excluded everywhere so the numbers match
- * what is in the till.
+ * There is no revenue to report — the site takes no money. The funnel is
+ * shortlist → inquiry → contacted → quoted on the phone → won or lost.
+ * `internalQuotedAmount` is the only field with money in it, and it exists
+ * only where somebody typed the figure back in after the call, so it is
+ * labelled pipeline throughout and never income.
  */
 
-/** Orders that represent real money. */
-const REVENUE_MATCH = {
-  orderStatus: { $nin: ['cancelled', 'returned'] },
-} as const;
-
-export interface PeriodRevenue {
-  revenue: number;
-  orders: number;
-}
-
 export interface DashboardStats {
-  revenue: { today: PeriodRevenue; week: PeriodRevenue; month: PeriodRevenue; year: PeriodRevenue };
-  ordersByStatus: Record<string, number>;
-  paymentsByStatus: Record<string, number>;
-  quotations: { new: number; awaitingResponse: number; total: number };
-  inventory: { lowStock: number; outOfStock: number; totalActive: number };
-  customers: { newThisMonth: number; total: number };
-  averageOrderValue: number;
-  /** Quotations that became orders, as a percentage of all quotations. */
-  quotationConversionRate: number;
-  /** Carts that became orders this month, as a percentage of carts created. */
-  checkoutConversionRate: number;
-  pending: { reviews: number; contacts: number };
+  inquiries: { newToday: number; newThisWeek: number; total: number; open: number };
+  byStatus: Record<string, number>;
+  byType: Record<string, number>;
+  /** Value quoted verbally. Indicative — see the note above. */
+  pipeline: { quotedThisMonth: number; wonThisMonth: number; averageQuote: number };
+  inventory: { lowStock: number; outOfStock: number; imported: number; totalActive: number };
+  winRate: number;
+  /** In `new` with nobody assigned — the thing to fix before lunch. */
+  unassigned: number;
+  /** Shortlists with items that were never submitted. */
+  abandonedLists: number;
+  pending: { contacts: number; testimonials: number };
+  /** Still `new` after a full working day — the number that should be zero. */
+  overdue: number;
+  /** Chase dates that have arrived or passed on still-open inquiries. */
+  followUpsDue: number;
+  /** Where the demand comes from. */
+  byCity: { name: string; inquiries: number }[];
+  /** Most-asked-for items that are not in the catalogue. */
+  topRequestedNotStocked: { name: string; inquiries: number }[];
 }
 
-function startOf(unit: 'day' | 'week' | 'month' | 'year'): Date {
+function startOf(unit: 'day' | 'week' | 'month'): Date {
   const now = new Date();
   const date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   if (unit === 'week') {
-    // Week starts Monday — the Pakistani working week runs Mon–Sat.
-    const day = (date.getDay() + 6) % 7;
-    date.setDate(date.getDate() - day);
+    // Monday start — the Lahore working week runs Mon–Sat.
+    date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
   }
   if (unit === 'month') date.setDate(1);
-  if (unit === 'year') {
-    date.setMonth(0);
-    date.setDate(1);
-  }
   return date;
 }
 
-async function revenueSince(since: Date): Promise<PeriodRevenue> {
-  const [row] = await Order.aggregate<{ revenue: number; orders: number }>([
-    { $match: { ...REVENUE_MATCH, createdAt: { $gte: since } } },
-    { $group: { _id: null, revenue: { $sum: '$total' }, orders: { $sum: 1 } } },
-  ]);
-  return { revenue: Math.round(row?.revenue ?? 0), orders: row?.orders ?? 0 };
-}
+const OPEN_STATUSES = ['new', 'contacted', 'quoted_verbally', 'negotiating'];
 
-async function countBy(field: 'orderStatus' | 'paymentStatus'): Promise<Record<string, number>> {
-  const rows = await Order.aggregate<{ _id: string; count: number }>([
-    { $group: { _id: `$${field}`, count: { $sum: 1 } } },
+async function sumQuoted(match: Record<string, unknown>): Promise<number> {
+  const [row] = await Inquiry.aggregate<{ total: number }>([
+    { $match: { ...match, internalQuotedAmount: { $gt: 0 } } },
+    { $group: { _id: null, total: { $sum: '$internalQuotedAmount' } } },
   ]);
-  return Object.fromEntries(rows.map((row) => [row._id, row.count]));
+  return Math.round(row?.total ?? 0);
 }
 
 export async function getStats(): Promise<DashboardStats> {
   const monthStart = startOf('month');
 
   const [
-    today,
-    week,
-    month,
-    year,
-    ordersByStatus,
-    paymentsByStatus,
-    newQuotations,
-    awaitingResponse,
-    totalQuotations,
-    convertedQuotations,
+    newToday,
+    newThisWeek,
+    total,
+    open,
+    statusCounts,
+    typeCounts,
+    quotedThisMonth,
+    wonThisMonth,
+    averageRow,
     lowStock,
     outOfStock,
+    imported,
     totalActive,
-    newCustomers,
-    totalCustomers,
-    aovRow,
-    pendingReviews,
-    newContacts,
-    ordersThisMonth,
+    unassigned,
+    abandonedLists,
+    pendingContacts,
+    pendingTestimonials,
+    wonAllTime,
+    signals,
   ] = await Promise.all([
-    revenueSince(startOf('day')),
-    revenueSince(startOf('week')),
-    revenueSince(monthStart),
-    revenueSince(startOf('year')),
-    countBy('orderStatus'),
-    countBy('paymentStatus'),
-    Quotation.countDocuments({ status: 'new' }),
-    Quotation.countDocuments({ status: { $in: ['quoted', 'negotiating'] } }),
-    Quotation.countDocuments({}),
-    Quotation.countDocuments({ status: 'converted' }),
+    Inquiry.countDocuments({ createdAt: { $gte: startOf('day') } }),
+    Inquiry.countDocuments({ createdAt: { $gte: startOf('week') } }),
+    Inquiry.countDocuments({}),
+    Inquiry.countDocuments({ status: { $in: OPEN_STATUSES } }),
+    Inquiry.aggregate<{ _id: string; count: number }>([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
+    Inquiry.aggregate<{ _id: string; count: number }>([
+      { $group: { _id: '$type', count: { $sum: 1 } } },
+    ]),
+    sumQuoted({ createdAt: { $gte: monthStart } }),
+    sumQuoted({ status: 'won', createdAt: { $gte: monthStart } }),
+    Inquiry.aggregate<{ avg: number }>([
+      { $match: { internalQuotedAmount: { $gt: 0 } } },
+      { $group: { _id: null, avg: { $avg: '$internalQuotedAmount' } } },
+    ]),
     Product.countDocuments({
       isActive: true,
       stock: { $gt: 0 },
       $expr: { $lte: ['$stock', '$lowStockThreshold'] },
     }),
-    Product.countDocuments({ isActive: true, stock: { $lte: 0 } }),
+    Product.countDocuments({ isActive: true, stock: { $lte: 0 }, isImportItem: false }),
+    Product.countDocuments({ isActive: true, isImportItem: true }),
     Product.countDocuments({ isActive: true }),
-    User.countDocuments({ role: 'customer', createdAt: { $gte: monthStart } }),
-    User.countDocuments({ role: 'customer' }),
-    Order.aggregate<{ avg: number }>([
-      { $match: REVENUE_MATCH },
-      { $group: { _id: null, avg: { $avg: '$total' } } },
-    ]),
-    Review.countDocuments({ isApproved: false }),
+    Inquiry.countDocuments({ status: 'new', assignedTo: null }),
+    InquiryList.countDocuments({ 'items.0': { $exists: true } }),
     Contact.countDocuments({ status: 'new' }),
-    Order.countDocuments({ ...REVENUE_MATCH, createdAt: { $gte: monthStart } }),
+    Testimonial.countDocuments({ isPublished: false }),
+    Inquiry.countDocuments({ status: 'won' }),
+    getPipelineSignals(),
   ]);
 
-  // Checkout conversion: orders placed this month vs. shopping carts touched.
-  const cartsThisMonth = await Order.db
-    .collection('carts')
-    .countDocuments({ type: 'shopping', updatedAt: { $gte: monthStart } });
+  const toMap = (rows: { _id: string; count: number }[]): Record<string, number> =>
+    Object.fromEntries(rows.map((row) => [row._id, row.count]));
 
   const pct = (part: number, whole: number): number =>
     whole === 0 ? 0 : Math.round((part / whole) * 1000) / 10;
 
   return {
-    revenue: { today, week, month, year },
-    ordersByStatus,
-    paymentsByStatus,
-    quotations: { new: newQuotations, awaitingResponse, total: totalQuotations },
-    inventory: { lowStock, outOfStock, totalActive },
-    customers: { newThisMonth: newCustomers, total: totalCustomers },
-    averageOrderValue: Math.round(aovRow[0]?.avg ?? 0),
-    quotationConversionRate: pct(convertedQuotations, totalQuotations),
-    checkoutConversionRate: pct(ordersThisMonth, Math.max(cartsThisMonth, ordersThisMonth)),
-    pending: { reviews: pendingReviews, contacts: newContacts },
+    inquiries: { newToday, newThisWeek, total, open },
+    byStatus: toMap(statusCounts),
+    byType: toMap(typeCounts),
+    pipeline: {
+      quotedThisMonth,
+      wonThisMonth,
+      averageQuote: Math.round(averageRow[0]?.avg ?? 0),
+    },
+    inventory: { lowStock, outOfStock, imported, totalActive },
+    winRate: pct(wonAllTime, total),
+    unassigned,
+    abandonedLists,
+    pending: { contacts: pendingContacts, testimonials: pendingTestimonials },
+    ...signals,
   };
 }
 
 /* --------------------------------- Charts -------------------------------- */
 
-export interface SalesPoint {
-  period: string;
-  revenue: number;
-  orders: number;
-}
-
-export interface NamedTotal {
-  id: string;
-  name: string;
-  revenue: number;
-  units: number;
-}
-
 export interface DashboardCharts {
-  salesOverTime: SalesPoint[];
-  topProducts: NamedTotal[];
-  revenueByCategory: NamedTotal[];
-  revenueByBrand: NamedTotal[];
+  inquiriesOverTime: { period: string; inquiries: number; won: number }[];
+  topInquiredProducts: { id: string; name: string; inquiries: number; units: number }[];
+  inquiriesByCategory: { id: string; name: string; inquiries: number; units: number }[];
+  inquiriesByBrand: { id: string; name: string; inquiries: number; units: number }[];
 }
 
 const FORMATS = { daily: '%Y-%m-%d', weekly: '%G-W%V', monthly: '%Y-%m' } as const;
@@ -169,111 +152,92 @@ export async function getCharts(
   days: number,
 ): Promise<DashboardCharts> {
   const since = new Date(Date.now() - days * 86_400_000);
-  const match = { ...REVENUE_MATCH, createdAt: { $gte: since } };
+  const match = { createdAt: { $gte: since } };
 
-  const salesPipeline: PipelineStage[] = [
-    { $match: match },
-    {
-      $group: {
-        _id: { $dateToString: { format: FORMATS[granularity], date: '$createdAt' } },
-        revenue: { $sum: '$total' },
-        orders: { $sum: 1 },
-      },
-    },
-    { $sort: { _id: 1 } },
-  ];
-
-  /** Revenue attributed per line item, joined to a lookup collection. */
-  const byRef = (from: string, localField: string): PipelineStage[] => [
+  /** Line demand grouped by a product field, joined for the display name. */
+  const byRef = (from: string, field: string): Parameters<typeof Inquiry.aggregate>[0] => [
     { $match: match },
     { $unwind: '$items' },
     { $lookup: { from: 'products', localField: 'items.product', foreignField: '_id', as: 'product' } },
     { $unwind: '$product' },
     {
       $group: {
-        _id: `$product.${localField}`,
-        revenue: { $sum: '$items.subtotal' },
+        _id: `$product.${field}`,
+        inquiries: { $sum: 1 },
         units: { $sum: '$items.qty' },
       },
     },
     { $lookup: { from, localField: '_id', foreignField: '_id', as: 'ref' } },
     { $unwind: '$ref' },
-    { $project: { name: '$ref.name', revenue: 1, units: 1 } },
-    { $sort: { revenue: -1 } },
-    { $limit: 12 },
+    { $project: { name: '$ref.name', inquiries: 1, units: 1 } },
+    { $sort: { inquiries: -1 } },
+    { $limit: 10 },
   ];
 
-  const [sales, topProducts, byCategory, byBrand] = await Promise.all([
-    Order.aggregate<{ _id: string; revenue: number; orders: number }>(salesPipeline),
-    Order.aggregate<{ _id: Types.ObjectId; name: string; revenue: number; units: number }>([
+  type Row = { _id: unknown; name: string; inquiries: number; units: number };
+
+  const [overTime, topProducts, byCategory, byBrand] = await Promise.all([
+    Inquiry.aggregate<{ _id: string; inquiries: number; won: number }>([
+      { $match: match },
+      {
+        $group: {
+          _id: { $dateToString: { format: FORMATS[granularity], date: '$createdAt' } },
+          inquiries: { $sum: 1 },
+          won: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    Inquiry.aggregate<Row>([
       { $match: match },
       { $unwind: '$items' },
       {
         $group: {
           _id: '$items.product',
           name: { $first: '$items.name' },
-          revenue: { $sum: '$items.subtotal' },
+          inquiries: { $sum: 1 },
           units: { $sum: '$items.qty' },
         },
       },
-      { $sort: { revenue: -1 } },
+      { $sort: { inquiries: -1 } },
       { $limit: 10 },
     ]),
-    Order.aggregate<{ _id: Types.ObjectId; name: string; revenue: number; units: number }>(
-      byRef('categories', 'category'),
-    ),
-    Order.aggregate<{ _id: Types.ObjectId; name: string; revenue: number; units: number }>(
-      byRef('brands', 'brand'),
-    ),
+    Inquiry.aggregate<Row>(byRef('categories', 'category')),
+    Inquiry.aggregate<Row>(byRef('brands', 'brand')),
   ]);
 
-  const toNamed = (rows: { _id: Types.ObjectId; name: string; revenue: number; units: number }[]): NamedTotal[] =>
+  const named = (rows: Row[]): DashboardCharts['topInquiredProducts'] =>
     rows.map((row) => ({
-      id: row._id.toString(),
+      id: String(row._id),
       name: row.name,
-      revenue: Math.round(row.revenue),
+      inquiries: row.inquiries,
       units: row.units,
     }));
 
   return {
-    salesOverTime: sales.map((row) => ({
+    inquiriesOverTime: overTime.map((row) => ({
       period: row._id,
-      revenue: Math.round(row.revenue),
-      orders: row.orders,
+      inquiries: row.inquiries,
+      won: row.won,
     })),
-    topProducts: toNamed(topProducts),
-    revenueByCategory: toNamed(byCategory),
-    revenueByBrand: toNamed(byBrand),
+    topInquiredProducts: named(topProducts),
+    inquiriesByCategory: named(byCategory),
+    inquiriesByBrand: named(byBrand),
   };
 }
 
 /* --------------------------------- Recent -------------------------------- */
 
 export async function getRecent(): Promise<Record<string, unknown[]>> {
-  const [orders, quotations, reviews, contacts] = await Promise.all([
-    Order.find()
-      .select('orderNumber customer total orderStatus paymentStatus createdAt')
+  const [inquiries, contacts, testimonials] = await Promise.all([
+    Inquiry.find()
+      .select('inquiryNumber customer type status priority createdAt')
       .sort({ createdAt: -1 })
       .limit(10)
       .lean(),
-    Quotation.find()
-      .select('quoteNumber customer status quotedTotal createdAt')
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean(),
-    Review.find()
-      .select('product user rating title isApproved createdAt')
-      .populate({ path: 'user', select: 'name' })
-      .populate({ path: 'product', select: 'name slug' })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean(),
-    Contact.find()
-      .select('name email subject status createdAt')
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean(),
+    Contact.find().select('name email subject status createdAt').sort({ createdAt: -1 }).limit(10).lean(),
+    Testimonial.find().select('author company isPublished createdAt').sort({ createdAt: -1 }).limit(5).lean(),
   ]);
 
-  return { orders, quotations, reviews, contacts };
+  return { inquiries, contacts, testimonials };
 }

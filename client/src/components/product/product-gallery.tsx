@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { ZoomIn } from 'lucide-react';
+import { imageProps } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import type { ProductImage as ProductImageType } from '@/types';
+import { BrandLogo } from '@/components/shared/brand-logo';
 
 /**
  * Product gallery: large image with hover zoom, plus a thumbnail rail.
@@ -16,10 +18,13 @@ export function ProductGallery({
   images,
   name,
   sku,
+  brand,
 }: {
   images: ProductImageType[];
   name: string;
   sku: string;
+  /** Shown on a placeholder tile — see `product-image.tsx` for why. */
+  brand?: { name: string; slug: string } | null;
 }): JSX.Element {
   const gallery = images.length > 0 ? images : [];
   const [active, setActive] = useState(0);
@@ -27,7 +32,7 @@ export function ProductGallery({
   const [origin, setOrigin] = useState('50% 50%');
 
   const current = gallery[active];
-  const src = current?.url ?? '/placeholders/default.svg';
+  const resolved = imageProps(current?.url);
   const isPlaceholder = !current || current.publicId.startsWith('placeholder/');
 
   const onMove = (event: React.MouseEvent<HTMLDivElement>): void => {
@@ -46,7 +51,7 @@ export function ProductGallery({
         onMouseMove={onMove}
       >
         <Image
-          src={src}
+          {...resolved}
           alt={current?.alt ?? `${name} — ${sku}`}
           fill
           sizes="(max-width: 1024px) 100vw, 45vw"
@@ -59,11 +64,26 @@ export function ProductGallery({
         />
 
         {isPlaceholder ? (
-          <span className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
-            <span className="rounded bg-brand-navy/90 px-2.5 py-1 font-mono text-xs font-bold tracking-wide text-white">
-              {sku}
+          <>
+            <span className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
+              <span className="rounded bg-brand-navy/90 px-2.5 py-1 font-mono text-xs font-bold tracking-wide text-white">
+                {sku}
+              </span>
             </span>
-          </span>
+
+            {brand ? (
+              <span className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center px-6">
+                <span className="flex h-10 w-1/2 max-w-[200px] items-center justify-center rounded-md border border-border/70 bg-white/95 px-3 shadow-sm">
+                  <BrandLogo
+                    slug={brand.slug}
+                    name={brand.name}
+                    className="bg-transparent p-0"
+                    sizes="200px"
+                  />
+                </span>
+              </span>
+            ) : null}
+          </>
         ) : (
           <span className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-1 rounded bg-brand-navy/80 px-2 py-1 text-2xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
             <ZoomIn className="size-3" />
@@ -86,7 +106,7 @@ export function ProductGallery({
                   index === active ? 'border-brand-cyan' : 'border-border hover:border-brand-navy/40',
                 )}
               >
-                <Image src={image.url} alt="" fill sizes="64px" className="object-contain" />
+                <Image {...imageProps(image.url)} alt="" fill sizes="64px" className="object-contain" />
               </button>
             </li>
           ))}

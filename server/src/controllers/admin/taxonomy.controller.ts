@@ -1,11 +1,12 @@
 import { Types, type Model } from 'mongoose';
 import type { Request, Response } from 'express';
-import { Banner, Brand, Category, Coupon, Product } from '../../models';
+import { Banner, Brand, Category, Product } from '../../models';
 import { recordAudit } from '../../services/audit.service';
 import { ApiError } from '../../utils/ApiError';
 import { sendCreated, sendSuccess } from '../../utils/ApiResponse';
 import { uniqueSlug } from '../../utils/slug';
 import type { ReorderInput } from '../../validators';
+import { revalidate, type CacheTag } from '../../services/revalidate.service';
 
 /**
  * Categories, brands, banners and coupons.
@@ -18,6 +19,12 @@ import type { ReorderInput } from '../../validators';
 interface CrudOptions<T> {
   model: Model<T>;
   label: string;
+  /*
+   * Storefront cache tag to flush after a write. Without it, a hidden banner
+   * or a renamed category stayed on the live site until the ISR window ran
+   * out — the same lag that made the product Active toggle look broken.
+   */
+  tag: CacheTag;
   /** Field the slug is derived from, when the entity has one. */
   slugFrom?: 'name';
   /** Throw to block a delete (e.g. a category still holding products). */
@@ -62,7 +69,7 @@ function buildListFilter(req: Request): Record<string, unknown> {
 }
 
 export function makeCrudController<T>(options: CrudOptions<T>): CrudController {
-  const { model, label, slugFrom, guardDelete, listSort = { displayOrder: 1, name: 1 } } = options;
+  const { model, label, tag, slugFrom, guardDelete, listSort = { displayOrder: 1, name: 1 } } = options;
 
   return {
     list: async (req, res): Promise<void> => {
@@ -88,6 +95,7 @@ export function makeCrudController<T>(options: CrudOptions<T>): CrudController {
       const id = String((created as unknown as { _id: Types.ObjectId })._id);
 
       recordAudit({ req, action: 'create', entity: label, entityId: id, after: input });
+      revalidate([tag]);
       sendCreated(res, created, `${label} created`);
     },
 
@@ -110,6 +118,7 @@ export function makeCrudController<T>(options: CrudOptions<T>): CrudController {
       await existing.save();
 
       recordAudit({ req, action: 'update', entity: label, entityId: id, before, after: input });
+      revalidate([tag]);
       sendSuccess(res, existing.toJSON(), `${label} updated`);
     },
 
@@ -121,6 +130,7 @@ export function makeCrudController<T>(options: CrudOptions<T>): CrudController {
       if (!deleted) throw ApiError.notFound(`${label} not found`);
 
       recordAudit({ req, action: 'delete', entity: label, entityId: id });
+      revalidate([tag]);
       sendSuccess(res, null, `${label} deleted`);
     },
 
@@ -146,6 +156,7 @@ export function makeCrudController<T>(options: CrudOptions<T>): CrudController {
         after: { items },
       });
 
+      revalidate([tag]);
       sendSuccess(res, null, `${items.length} ${label}(s) reordered`);
     },
   };
@@ -181,6 +192,7 @@ async function guardBrandDelete(id: string): Promise<void> {
 export const categoryAdmin = makeCrudController({
   model: Category,
   label: 'Category',
+  tag: 'categories',
   slugFrom: 'name',
   guardDelete: guardCategoryDelete,
   listSort: { level: 1, displayOrder: 1, name: 1 },
@@ -189,6 +201,7 @@ export const categoryAdmin = makeCrudController({
 export const brandAdmin = makeCrudController({
   model: Brand,
   label: 'Brand',
+  tag: 'brands',
   slugFrom: 'name',
   guardDelete: guardBrandDelete,
 });
@@ -196,11 +209,6 @@ export const brandAdmin = makeCrudController({
 export const bannerAdmin = makeCrudController({
   model: Banner,
   label: 'Banner',
+  tag: 'banners',
   listSort: { position: 1, displayOrder: 1 },
-});
-
-export const couponAdmin = makeCrudController({
-  model: Coupon,
-  label: 'Coupon',
-  listSort: { createdAt: -1 },
 });

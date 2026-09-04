@@ -1,5 +1,10 @@
 # Fast Traders — Design System (Phase 5)
 
+> **Mostly current.** Tokens, layout and the component list still hold. The
+> commerce-specific parts below (`PriceDisplay`, the dual cart, the cart badge
+> in the header) were replaced by the catalogue-only pivot — see
+> [`CATALOG-PIVOT.md`](./CATALOG-PIVOT.md).
+
 67 client files. Every component is wired to mock data, so Phase 6 swaps the
 data source, not the markup.
 
@@ -49,13 +54,15 @@ is a variable swap rather than a rewrite. A `.dark` block is already stubbed.
 | `table.tsx` | Table parts + **DataTable** (client-side sortable) |
 | `pagination.tsx` | Pagination (with `pageWindow` ellipsis logic), Breadcrumb |
 | `feedback.tsx` | Spinner, Skeleton, ProductCardSkeleton, TableSkeleton, EmptyState, ErrorState |
-| `commerce.tsx` | Rating, QuantityStepper, **PriceDisplay** |
+| `commerce.tsx` | Rating, QuantityStepper, **AvailabilityNote** (was `PriceDisplay`) |
 | `toast.tsx` | Toaster (sonner), themed, offset above the mobile bottom nav |
 | `separator.tsx` | Separator, SectionHeading (cyan rule) |
 
-`PriceDisplay` is the component that makes the hybrid model visible: a
-`quote`-only product renders **"Price on request"** rather than an empty space,
-`both` shows price plus a bulk-quote button, `retail` shows price and discount.
+`AvailabilityNote` is what replaced `PriceDisplay`. Every product renders
+**"Price on request"** with a line underneath that changes with `isMadeToOrder`:
+*"Call, WhatsApp or send an enquiry for a quotation"* for stocked items,
+*"Sourced to order — we will confirm price and lead time"* for imports. No
+component in the library can render a product price.
 
 ---
 
@@ -90,9 +97,10 @@ scroll-to-top above it, announcement bar, `loading.tsx` / `error.tsx` /
 
 ## State
 
-- `store/cart-store.ts` — Zustand + persist. Both carts, hydration-guarded so
-  the SSR badge (0) matches the first client render. Server stays the source of
-  truth; this exists so badges render instantly.
+- `store/enquiry-store.ts` — Zustand + persist (was `cart-store.ts`, two carts).
+  One enquiry shortlist, hydration-guarded so the SSR badge (0) matches the first
+  client render. Server stays the source of truth; this exists so the badge
+  renders instantly.
 - `store/ui-store.ts` — drawers, search panel, announcement dismissal.
 - `lib/auth-context.tsx` — shape and `useAuth()` hook; Phase 6 swaps the
   placeholder state for a `GET /auth/me` query.

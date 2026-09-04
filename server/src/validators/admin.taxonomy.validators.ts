@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { booleanQuerySchema, objectIdSchema, slugSchema } from './common.validators';
+import {
+  booleanQuerySchema,
+  imageRefSchema,
+  objectIdSchema,
+  slugSchema,
+} from './common.validators';
 
 /** Category, brand, banner and coupon payloads. */
 
@@ -15,7 +20,7 @@ export const createCategorySchema = z.object({
   name: z.string().trim().min(2).max(120),
   slug: slugSchema.optional(),
   description: z.string().trim().max(1000).optional(),
-  image: z.string().url().optional(),
+  image: imageRefSchema.optional(),
   /** Lucide icon name shown in the mega-menu. */
   icon: z.string().trim().max(60).optional(),
   parent: objectIdSchema.nullable().default(null),
@@ -26,8 +31,25 @@ export const createCategorySchema = z.object({
 });
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 
-export const updateCategorySchema = createCategorySchema
-  .partial()
+/*
+ * Explicit, not `.partial()`. See `updateBrandSchema` for why: optional but
+ * not nullable means a description or an icon can be set and never removed.
+ * `parent: null` is especially load-bearing — it is how a nested category is
+ * promoted back to the top level.
+ */
+export const updateCategorySchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    slug: slugSchema.optional(),
+    description: z.string().trim().max(1000).nullable().optional(),
+    image: imageRefSchema.nullable().optional(),
+    icon: z.string().trim().max(60).nullable().optional(),
+    parent: objectIdSchema.nullable().optional(),
+    displayOrder: z.number().int().nonnegative().optional(),
+    isFeatured: z.boolean().optional(),
+    isActive: z.boolean().optional(),
+    seo: seoSchema.optional(),
+  })
   .refine((data) => Object.keys(data).length > 0, 'Provide at least one field to update');
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 
@@ -36,7 +58,7 @@ export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export const createBrandSchema = z.object({
   name: z.string().trim().min(2).max(120),
   slug: slugSchema.optional(),
-  logo: z.string().url().optional(),
+  logo: imageRefSchema.optional(),
   description: z.string().trim().max(1000).optional(),
   country: z.string().trim().max(60).optional(),
   website: z.string().url().optional(),
@@ -46,8 +68,26 @@ export const createBrandSchema = z.object({
 });
 export type CreateBrandInput = z.infer<typeof createBrandSchema>;
 
-export const updateBrandSchema = createBrandSchema
-  .partial()
+/*
+ * Written out rather than `createBrandSchema.partial()`.
+ *
+ * `.partial()` makes every field optional but not nullable, so there was no
+ * value the admin could send to *clear* a logo, a website or a country — the
+ * update schema could only ever set them. `null` now means "unset this",
+ * matching what `updateBannerSchema` already did.
+ */
+export const updateBrandSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    slug: slugSchema.optional(),
+    logo: imageRefSchema.nullable().optional(),
+    description: z.string().trim().max(1000).nullable().optional(),
+    country: z.string().trim().max(60).nullable().optional(),
+    website: z.string().url().nullable().optional(),
+    isFeatured: z.boolean().optional(),
+    displayOrder: z.number().int().nonnegative().optional(),
+    isActive: z.boolean().optional(),
+  })
   .refine((data) => Object.keys(data).length > 0, 'Provide at least one field to update');
 
 /* -------------------------------- Banners -------------------------------- */
@@ -56,8 +96,8 @@ export const createBannerSchema = z
   .object({
     title: z.string().trim().min(2).max(160),
     subtitle: z.string().trim().max(300).optional(),
-    image: z.string().url(),
-    mobileImage: z.string().url().optional(),
+    image: imageRefSchema,
+    mobileImage: imageRefSchema.optional(),
     link: z.string().trim().max(300).optional(),
     ctaText: z.string().trim().max(40).optional(),
     position: z.enum(['hero', 'strip', 'sidebar']).default('hero'),
@@ -76,8 +116,8 @@ export const updateBannerSchema = z
   .object({
     title: z.string().trim().min(2).max(160).optional(),
     subtitle: z.string().trim().max(300).nullable().optional(),
-    image: z.string().url().optional(),
-    mobileImage: z.string().url().nullable().optional(),
+    image: imageRefSchema.optional(),
+    mobileImage: imageRefSchema.nullable().optional(),
     link: z.string().trim().max(300).nullable().optional(),
     ctaText: z.string().trim().max(40).nullable().optional(),
     position: z.enum(['hero', 'strip', 'sidebar']).optional(),

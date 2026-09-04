@@ -1,10 +1,22 @@
 import type { BrandSeed } from './types';
 
-/** The 12 brands Fast Traders is authorised to stock. */
+/**
+ * The 12 brands Fast Traders is authorised to stock.
+ *
+ * `logo` points at a file in the *client's* `public/brand/logos/`, named after
+ * the slug. Serving them from the front end rather than Cloudinary is
+ * deliberate: these twelve change roughly never, and a local file costs no
+ * round trip to a third party on a 3G first paint.
+ *
+ * Filenames are lower case to match the slug exactly. macOS is
+ * case-insensitive and Vercel's Linux hosts are not, so a capitalised name
+ * would resolve locally and 404 in production.
+ */
 export const brands: BrandSeed[] = [
   {
     name: 'Terasaki',
     slug: 'terasaki',
+    logo: '/brand/logos/terasaki.png',
     country: 'Japan',
     website: 'https://www.terasaki.co.jp',
     description:
@@ -15,6 +27,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'Mitsubishi Electric',
     slug: 'mitsubishi-electric',
+    logo: '/brand/logos/mitsubishi-electric.png',
     country: 'Japan',
     website: 'https://www.mitsubishielectric.com',
     description:
@@ -25,6 +38,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'Schneider Electric',
     slug: 'schneider-electric',
+    logo: '/brand/logos/schneider-electric.png',
     country: 'France',
     website: 'https://www.se.com',
     description:
@@ -35,6 +49,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'Fuji Electric',
     slug: 'fuji-electric',
+    logo: '/brand/logos/fuji-electric.png',
     country: 'Japan',
     website: 'https://www.fujielectric.com',
     description:
@@ -45,6 +60,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'Hager',
     slug: 'hager',
+    logo: '/brand/logos/hager.png',
     country: 'Germany',
     website: 'https://www.hager.com',
     description:
@@ -55,6 +71,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'Autonics',
     slug: 'autonics',
+    logo: '/brand/logos/autonics.png',
     country: 'South Korea',
     website: 'https://www.autonics.com',
     description:
@@ -65,6 +82,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'IDEC',
     slug: 'idec',
+    logo: '/brand/logos/idec.png',
     country: 'Japan',
     website: 'https://www.idec.com',
     description:
@@ -74,6 +92,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'Pilz',
     slug: 'pilz',
+    logo: '/brand/logos/pilz.png',
     country: 'Germany',
     website: 'https://www.pilz.com',
     description:
@@ -83,6 +102,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'WAGO',
     slug: 'wago',
+    logo: '/brand/logos/wago.png',
     country: 'Germany',
     website: 'https://www.wago.com',
     description:
@@ -92,6 +112,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'National',
     slug: 'national',
+    logo: '/brand/logos/national.png',
     country: 'Pakistan',
     description:
       'Locally trusted value brand for MCBs, wiring accessories and building wire — the practical choice for domestic and light commercial work.',
@@ -100,6 +121,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'DELAB',
     slug: 'delab',
+    logo: '/brand/logos/delab.png',
     country: 'Turkey',
     description:
       'Power-factor correction specialist: low-voltage power capacitors, reactive power controllers and capacitor duty contactors.',
@@ -108,6 +130,7 @@ export const brands: BrandSeed[] = [
   {
     name: 'Torex',
     slug: 'torex',
+    logo: '/brand/logos/torex.png',
     country: 'Pakistan',
     description:
       'Cables, wires and transformers manufactured to IEC and PSQCA standards for the Pakistani market.',

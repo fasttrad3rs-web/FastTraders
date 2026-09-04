@@ -1,4 +1,6 @@
-import type { Banner, Brand, Category, Product, Setting } from '@/types';
+import type { Banner, Brand, Category, Product, Setting, Testimonial } from '@/types';
+
+export type { Testimonial };
 
 /** Response shapes returned by the Phase 3 catalogue endpoints. */
 
@@ -17,13 +19,13 @@ export interface FacetBucket {
   count: number;
 }
 
+/** Mirrors `ProductFacets` in server/src/services/catalog.facets.ts. */
 export interface ProductFacets {
   categories: FacetBucket[];
   brands: FacetBucket[];
-  pricingModes: FacetBucket[];
-  stockStatus: FacetBucket[];
+  /** Ready / on order / imported / discontinued — replaced the price slider. */
+  availability: FacetBucket[];
   specs: { key: string; values: FacetBucket[] }[];
-  priceRange: { min: number; max: number } | null;
 }
 
 export interface ProductListResponse {
@@ -69,8 +71,12 @@ export interface Suggestion {
   sku: string;
   partNumber?: string;
   image?: string;
-  price?: number;
-  pricingMode: string;
+  /*
+   * No `price` and no `pricingMode`. The suggest endpoint stopped projecting
+   * them at the pivot; leaving them on the type invited a component to render
+   * a figure the API no longer sends — and would have rendered one the day
+   * anybody put it back.
+   */
 }
 
 export type { Banner, Setting, Product, Category, Brand };

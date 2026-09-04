@@ -23,10 +23,6 @@ const clientEnvSchema = z.object({
     .string()
     .regex(/^\d{10,15}$/, 'NEXT_PUBLIC_WHATSAPP_NUMBER must be 10-15 digits, no + or spaces'),
 
-  /** Stripe publishable key (safe to expose to the browser). */
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z
-    .string()
-    .min(1, 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is required'),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
@@ -35,7 +31,6 @@ const parsed = clientEnvSchema.safeParse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   NEXT_PUBLIC_WHATSAPP_NUMBER: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 });
 
 if (!parsed.success) {

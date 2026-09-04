@@ -8,7 +8,12 @@ import type { ProductImage } from '../types';
 /**
  * Individual seeders. Each is idempotent: re-running updates existing records
  * (matched on their natural key) rather than duplicating them.
+ *
+ * The inquiry seeder is the exception and lives in its own file — it clears
+ * and rewrites, because its dates are relative.
  */
+
+export { seedInquiries } from './seeders.inquiries';
 
 /** Slug -> ObjectId maps built as we insert, used to resolve references. */
 export type SlugMap = Map<string, Types.ObjectId>;
@@ -64,19 +69,7 @@ export async function seedAdmin(): Promise<void> {
     phone: '+92 324 4234990',
     passwordHash: password, // hashed by the pre-save hook
     role: 'admin',
-    companyName: 'Fast Traders',
-    isEmailVerified: true,
     isActive: true,
-    addresses: [
-      {
-        label: 'Shop',
-        line1: 'Shop No. 30, Grace Tower',
-        line2: 'Bull Road',
-        city: 'Lahore',
-        province: 'Punjab',
-        isDefault: true,
-      },
-    ],
   });
 
   logger.info(`[seed] Admin created: ${email}`);
@@ -180,10 +173,14 @@ export async function seedProducts(
       category: categoryId,
       subCategory: subCategoryId,
       brand: brandId,
-      pricingMode: product.pricingMode,
-      price: product.price,
-      comparePrice: product.comparePrice,
-      costPrice: product.costPrice,
+      // Availability is explicit in the data where it matters; otherwise it
+      // follows the stock figure, which is the honest default for a stockist.
+      availability:
+        product.availability ?? (product.stock > 0 ? 'ready_stock' : 'available_on_order'),
+      leadTime: product.leadTime,
+      isImportItem: product.isImportItem ?? false,
+      lastQuotedPrice: product.lastQuotedPrice,
+      internalCost: product.internalCost,
       stock: product.stock,
       unit: product.unit ?? 'piece',
       minOrderQty: product.minOrderQty ?? 1,

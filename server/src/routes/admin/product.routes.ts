@@ -40,6 +40,17 @@ router.patch(
 );
 router.delete('/:id', validate({ params: idParamSchema }), asyncHandler(products.deleteProduct));
 
+/*
+ * Permanent, unlike the route above. Kept on its own path so that nothing can
+ * reach it by accident: a client that means to hide a product and gets the URL
+ * slightly wrong hides it, rather than destroying it.
+ */
+router.delete(
+  '/:id/permanent',
+  validate({ params: idParamSchema }),
+  asyncHandler(products.purgeProduct),
+);
+
 router.patch(
   '/:id/stock',
   validate({ params: idParamSchema, body: stockAdjustmentSchema }),

@@ -14,46 +14,53 @@ export const metadata: Metadata = buildMetadata({
 });
 
 /** Single source for both the rendered accordion and the FAQPage schema. */
+/*
+ * These four lead deliberately: they are the questions the catalogue-only
+ * model creates, and the ones a buyer asks before ringing. The set that used
+ * to be here described online payment, guest checkout and a returns window —
+ * all of which stopped being true at the pivot, and any one of which would
+ * have been a lie in the search results via FAQPage markup.
+ */
 const FAQS = [
+  {
+    question: 'How do I get a price?',
+    answer:
+      'Call us on 0324 4234990, message the same number on WhatsApp, or add what you need to your inquiry list and send it. We quote on the phone because the right price depends on quantity, current stock and the exchange rate on imported items — a fixed number on a web page would be out of date within a week.',
+  },
+  {
+    question: 'Do you deliver outside Lahore?',
+    answer:
+      'Yes, anywhere in Pakistan. Lahore is usually 1–2 working days and same-day collection is available from our counter at Grace Tower, Bull Road. Elsewhere in Punjab is typically 2–4 working days and the rest of the country 3–6, by the courier that suits the consignment.',
+  },
+  {
+    question: 'Can you import a specific brand or model?',
+    answer:
+      'Often, yes — sourcing from China to order is a real part of what we do. Send the part number, or a photo of the rating plate if the unit has failed, through the Source From China form or on WhatsApp. We will tell you honestly whether we can get it, from where, and how long it takes.',
+  },
   {
     question: 'Are your products genuine?',
     answer:
-      'Yes. We are an authorised stockist for all twelve brands listed on the site and source only through official channels. Counterfeit breakers are a real problem in this market, which is why every item carries the manufacturer’s warranty.',
+      'Yes. We are an authorised stockist for the brands listed on this site and source only through official channels. Counterfeit breakers are a real problem in this market, which is why every item we supply carries the manufacturer’s warranty.',
   },
   {
-    question: 'Why do some products show a price and others say "price on request"?',
+    question: 'Why are there no prices on the website?',
     answer:
-      'Standard stock items are priced and can be bought online. Larger switchgear, automation and made-to-order items depend on specification, exchange rate and lead time, so we quote those individually. Add them to your inquiry list and we will price them, usually within one working day.',
+      'Because a published price for this kind of equipment is nearly always wrong. Switchgear and automation pricing moves with specification, quantity, supplier stock and the rupee. Quoting you directly means the number you get is the number that holds.',
   },
   {
     question: 'Do you offer trade or bulk pricing?',
     answer:
-      'Yes. Send your bill of materials through the Request a Quote page and we will come back with one consolidated quotation. We work regularly with contractors, panel builders and factory maintenance teams.',
+      'Yes. Send your bill of materials through the inquiry list and we will come back with one consolidated quotation. We work regularly with contractors, panel builders and factory maintenance teams.',
   },
   {
-    question: 'How long does delivery take?',
+    question: 'Do I need an account?',
     answer:
-      'Lahore is 1–2 working days, elsewhere in Punjab 2–4, and the rest of Pakistan 3–6. Free delivery applies above the thresholds shown at checkout. Same-day collection is available from our counter at Grace Tower, Bull Road.',
+      'No. There are no customer accounts on this site. Build an inquiry list, send it with your name and number, and we will call you back — nothing to register for and no password to forget.',
   },
   {
-    question: 'What payment methods do you accept?',
+    question: 'What if something arrives damaged or wrong?',
     answer:
-      'Cash on delivery, bank transfer, and card payment through Stripe. JazzCash and Easypaisa are planned. For bank transfer we send the account details with your order confirmation.',
-  },
-  {
-    question: 'Can I order without creating an account?',
-    answer:
-      'Yes — guest checkout is available for both orders and quotation requests. You can track a guest order with the order number and the email you used at checkout.',
-  },
-  {
-    question: 'What is your returns policy?',
-    answer:
-      'Report shortages or transit damage within 48 hours of delivery. Unused items in original packaging can be returned within 7 days. Special-order and made-to-order items are non-returnable once confirmed.',
-  },
-  {
-    question: 'Do you supply items that are not on the website?',
-    answer:
-      'Often, yes. The site shows a portion of what we can source. Send the part number or a photo of the rating plate on WhatsApp and we will tell you whether we can get it.',
+      'Tell us within 48 hours of delivery and we will sort it out. Unused items in original packaging can be returned within 7 days. Special-order and imported items are confirmed with you before we commit, so please check the specification carefully at that point.',
   },
 ] as const;
 
@@ -93,7 +100,7 @@ export default function FaqPage(): JSX.Element {
             <Link href="/contact">Contact us</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <Link href="/request-quote">Request a quote</Link>
+            <Link href="/submit-inquiry">Request a quote</Link>
           </Button>
         </div>
       </div>

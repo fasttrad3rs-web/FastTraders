@@ -1,15 +1,14 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { PriceRangeSlider } from '@/components/ui/slider';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/tabs';
 import { Chip } from '@/components/ui/badge';
 import type { CategoryNode, ProductFacets } from '@/lib/api/types';
+import { AVAILABILITY_LABELS } from '@/lib/availability';
+import type { Availability } from '@/types';
 import type { CatalogFilterApi } from './use-catalog-filters';
 
 /**
@@ -29,12 +28,6 @@ export function FilterSidebar({
   api: CatalogFilterApi;
 }): JSX.Element {
   const { filters, setFilter, toggleInList, toggleSpec, clearAll, activeCount } = api;
-
-  const bounds = facets?.priceRange ?? { min: 0, max: 200000 };
-  const [range, setRange] = useState<[number, number]>([
-    filters.minPrice ?? bounds.min,
-    filters.maxPrice ?? bounds.max,
-  ]);
 
   const selectedBrands = (filters.brand ?? '').split(',').filter(Boolean);
   const selectedSpecs = (filters.specs ?? '').split('|').filter(Boolean);
@@ -72,19 +65,19 @@ export function FilterSidebar({
               />
             );
           })}
-          {filters.inStock ? (
-            <Chip label="In stock" onRemove={() => setFilter({ inStock: undefined })} />
-          ) : null}
-          {filters.pricingMode ? (
+          {filters.availability ? (
             <Chip
-              label={filters.pricingMode === 'quote' ? 'Quote only' : filters.pricingMode}
-              onRemove={() => setFilter({ pricingMode: undefined })}
+              label={AVAILABILITY_LABELS[filters.availability]}
+              onRemove={() => setFilter({ availability: undefined })}
             />
+          ) : null}
+          {filters.isImportItem ? (
+            <Chip label="Import items" onRemove={() => setFilter({ isImportItem: undefined })} />
           ) : null}
         </div>
       ) : null}
 
-      <Accordion type="multiple" defaultValue={['categories', 'brands', 'price', 'availability']}>
+      <Accordion type="multiple" defaultValue={['categories', 'brands', 'availability', 'sourcing']}>
         {categories.length > 0 ? (
           <AccordionItem value="categories">
             <AccordionTrigger>Category</AccordionTrigger>
@@ -144,60 +137,59 @@ export function FilterSidebar({
           </AccordionItem>
         ) : null}
 
-        <AccordionItem value="price">
-          <AccordionTrigger>Price</AccordionTrigger>
-          <AccordionContent>
-            <PriceRangeSlider
-              min={bounds.min}
-              max={bounds.max}
-              value={range}
-              onValueChange={setRange}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              block
-              className="mt-3"
-              onClick={() => setFilter({ minPrice: range[0], maxPrice: range[1] })}
-            >
-              Apply price
-            </Button>
-            <p className="mt-2 text-2xs text-muted-foreground">
-              Quote-only products have no listed price and are excluded by this filter.
-            </p>
-          </AccordionContent>
-        </AccordionItem>
+        {facets && facets.availability.length > 0 ? (
+          <AccordionItem value="availability">
+            <AccordionTrigger>Availability</AccordionTrigger>
+            <AccordionContent>
+              {/*
+                The API takes a single `availability` value, so these behave as
+                radios: ticking one replaces the other, and ticking the current
+                one clears the filter.
+              */}
+              <ul className="space-y-2.5">
+                {facets.availability.map((bucket) => {
+                  const value = bucket.value as Availability;
+                  const checked = filters.availability === value;
+                  return (
+                    <li key={value} className="flex items-center gap-2.5">
+                      <Checkbox
+                        id={`availability-${value}`}
+                        checked={checked}
+                        onCheckedChange={() =>
+                          setFilter({ availability: checked ? undefined : value })
+                        }
+                      />
+                      <Label htmlFor={`availability-${value}`} className="flex-1 font-normal">
+                        {AVAILABILITY_LABELS[value] ?? bucket.label}
+                      </Label>
+                      <span className="text-2xs text-muted-foreground">{bucket.count}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+        ) : null}
 
-        <AccordionItem value="availability">
-          <AccordionTrigger>Availability &amp; buying</AccordionTrigger>
+        <AccordionItem value="sourcing">
+          <AccordionTrigger>Sourcing</AccordionTrigger>
           <AccordionContent>
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2.5">
-                <Checkbox
-                  id="filter-instock"
-                  checked={filters.inStock === true}
-                  onCheckedChange={(checked) => setFilter({ inStock: checked === true })}
-                />
-                <Label htmlFor="filter-instock" className="font-normal">
-                  In stock only
-                </Label>
-              </div>
-
-              {(facets?.pricingModes ?? []).map((bucket) => (
-                <div key={bucket.value} className="flex items-center gap-2.5">
-                  <Checkbox
-                    id={`mode-${bucket.value}`}
-                    checked={filters.pricingMode === bucket.value}
-                    onCheckedChange={(checked) =>
-                      setFilter({ pricingMode: checked === true ? bucket.value : undefined })
-                    }
-                  />
-                  <Label htmlFor={`mode-${bucket.value}`} className="flex-1 font-normal">
-                    {bucket.label}
-                  </Label>
-                  <span className="text-2xs text-muted-foreground">{bucket.count}</span>
-                </div>
-              ))}
+            {/*
+              A separate axis from availability: an item can be in stock today
+              and still be something we import rather than hold. Buyers who
+              have already accepted a long lead time filter on exactly this.
+            */}
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                id="filter-import"
+                checked={filters.isImportItem === true}
+                onCheckedChange={(checked) =>
+                  setFilter({ isImportItem: checked === true ? true : undefined })
+                }
+              />
+              <Label htmlFor="filter-import" className="flex-1 font-normal">
+                Import items only
+              </Label>
             </div>
           </AccordionContent>
         </AccordionItem>

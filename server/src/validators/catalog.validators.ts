@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { booleanQuerySchema, csvSchema, paginationSchema, slugSchema } from './common.validators';
 
-export const PRODUCT_SORTS = ['newest', 'price_asc', 'price_desc', 'popular', 'name'] as const;
+/*
+ * No price sorts. Sorting by a hidden field is a disclosure channel: two
+ * requests with different page sizes would let anyone reconstruct the price
+ * ordering of the whole catalogue.
+ */
+export const PRODUCT_SORTS = ['newest', 'name_asc', 'name_desc', 'popular'] as const;
 export type ProductSort = (typeof PRODUCT_SORTS)[number];
 
 /**
@@ -26,19 +31,22 @@ export const productQuerySchema = paginationSchema.extend({
   category: slugSchema.optional(),
   /** One or more brand slugs, comma separated. */
   brand: csvSchema.optional(),
-  minPrice: z.coerce.number().nonnegative().optional(),
-  maxPrice: z.coerce.number().nonnegative().optional(),
-  inStock: booleanQuerySchema.optional(),
-  pricingMode: z.enum(['retail', 'quote', 'both']).optional(),
+  /** Filter by what a buyer can actually expect. */
+  availability: z
+    .enum(['ready_stock', 'available_on_order', 'import_on_request', 'discontinued'])
+    .optional(),
   isFeatured: booleanQuerySchema.optional(),
+  /*
+   * Import-items-only. A separate axis from `availability`: an item can be
+   * `import_on_request` today and `available_on_order` next month while still
+   * being something we bring in rather than stock, and buyers who have already
+   * accepted a long lead time filter on exactly this.
+   */
+  isImportItem: booleanQuerySchema.optional(),
   tags: csvSchema.optional(),
   search: z.string().trim().min(1).max(120).optional(),
   specs: specsSchema.optional(),
-})
-  .refine(
-    (query) => query.minPrice === undefined || query.maxPrice === undefined || query.minPrice <= query.maxPrice,
-    { message: 'minPrice cannot be greater than maxPrice', path: ['minPrice'] },
-  );
+});
 
 export type ProductQuery = z.infer<typeof productQuerySchema>;
 

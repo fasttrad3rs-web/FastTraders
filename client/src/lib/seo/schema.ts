@@ -21,12 +21,6 @@ export function breadcrumbSchema(entries: BreadcrumbEntry[]): Record<string, unk
   };
 }
 
-const AVAILABILITY: Record<string, string> = {
-  in_stock: 'https://schema.org/InStock',
-  low_stock: 'https://schema.org/LimitedAvailability',
-  out_of_stock: 'https://schema.org/OutOfStock',
-  on_order: 'https://schema.org/BackOrder',
-};
 
 /**
  * Product schema.
@@ -51,15 +45,11 @@ export function productSchema(product: Product, canonicalPath: string): Record<s
     ...(brandName ? { brand: { '@type': 'Brand', name: brandName } } : {}),
     ...(image.length > 0 ? { image } : {}),
     url: `${SITE.url}${canonicalPath}`,
-    ...(product.reviewCount > 0
-      ? {
-          aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: product.ratingAvg,
-            reviewCount: product.reviewCount,
-          },
-        }
-      : {}),
+    /*
+     * No `aggregateRating` either. Ratings can only come from testimonials an
+     * admin typed in, which is not an aggregate of verified buyers — emitting
+     * one would be fabricating a review signal for the search results page.
+     */
     ...(product.specifications.length > 0
       ? {
           additionalProperty: product.specifications.map((spec) => ({
@@ -71,23 +61,15 @@ export function productSchema(product: Product, canonicalPath: string): Record<s
       : {}),
   };
 
-  if (product.pricingMode === 'quote' || typeof product.price !== 'number') {
-    return base;
-  }
-
-  return {
-    ...base,
-    offers: {
-      '@type': 'Offer',
-      price: product.price,
-      priceCurrency: 'PKR',
-      availability: AVAILABILITY[product.stockStatus] ?? AVAILABILITY.in_stock,
-      url: `${SITE.url}${canonicalPath}`,
-      seller: { '@id': `${SITE.url}/#organization` },
-      // Quoted prices are held for 30 days; the offer mirrors that.
-      priceValidUntil: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
-    },
-  };
+  /*
+   * CATALOGUE-ONLY: no `offers` node, ever.
+   *
+   * Fast Traders publishes no prices, and a Product without an offer is valid
+   * schema.org. Emitting a figure we do not actually quote would be wrong and
+   * a Merchant Center violation. Brand, SKU and MPN are what part-number
+   * searches match on, and those are all present above.
+   */
+  return base;
 }
 
 export function itemListSchema(

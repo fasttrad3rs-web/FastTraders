@@ -3,23 +3,22 @@
  *
  * MIRRORED DIRECTORY — keep in sync with `server/src/types/`.
  * These describe the serialised API shape: ids are strings and dates are ISO
- * strings. Server-only fields (`passwordHash`, `costPrice`, refresh tokens)
- * are deliberately absent.
+ * strings. Server-only fields (`passwordHash`, `internalCost`,
+ * `lastQuotedPrice`, `supplierNotes`, `stock`, refresh tokens) are absent —
+ * `toPublicJSON()` on the server strips them before they are serialised.
  */
 
 import type { UserRole } from './user.types';
 
 export type { ApiResponse, ApiErrorResponse, ApiErrorDetail, Paginated, HttpMethod } from './api';
 
-export type { UserRole, Province, Address, User, AuthTokens } from './user.types';
-export { PROVINCES } from './user.types';
+export type { UserRole, User, AuthTokens } from './user.types';
 
 export type {
   Seo,
   Category,
   Brand,
-  PricingMode,
-  StockStatus,
+  Availability,
   ProductUnit,
   ProductImage,
   Specification,
@@ -28,28 +27,27 @@ export type {
   Product,
 } from './catalog.types';
 
+/**
+ * Commerce types (Order, Cart, Coupon, payment) and every customer-account
+ * type went with the catalogue-only pivot. The Quotation became the Inquiry.
+ */
 export type {
-  CustomerDetails,
-  PaymentMethod,
-  PaymentStatus,
-  OrderStatus,
-  OrderItem,
-  PaymentDetails,
-  StatusHistoryEntry,
-  Order,
-  QuotationStatus,
-  QuotationItem,
-  Attachment,
-  Quotation,
-  CartType,
-  CartItem,
-  Cart,
-  CouponType,
-  Coupon,
-} from './commerce.types';
+  InquiryType,
+  InquiryStatus,
+  InquiryPriority,
+  InquirySource,
+  ContactMethod,
+  Urgency,
+  InquiryCustomer,
+  InquiryItem,
+  ReferenceFile,
+  SourcingDetails,
+  FollowUp,
+  Inquiry,
+} from './inquiry.types';
 
 export type {
-  Review,
+  Testimonial,
   ContactStatus,
   ContactSource,
   Contact,
@@ -57,7 +55,6 @@ export type {
   BannerPosition,
   Banner,
   BusinessHours,
-  ShippingRule,
   SocialLinks,
   Setting,
   AuditAction,

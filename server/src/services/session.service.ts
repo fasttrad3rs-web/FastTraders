@@ -33,7 +33,7 @@ export function readSessionId(req: Request): string | null {
   return existing && /^[\w-]{8,64}$/.test(existing) ? existing : null;
 }
 
-/** Owner filter for a cart query: the user when signed in, else the session. */
+/** Owner filter for an enquiry list: the user when signed in, else the session. */
 export function cartOwner(req: Request, sessionId: string | null): {
   user: string | null;
   sessionId: string | null;

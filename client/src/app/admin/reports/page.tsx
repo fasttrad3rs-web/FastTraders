@@ -13,7 +13,7 @@ import { apiClient, unwrap } from '@/lib/api-client';
 import { env } from '@/lib/env';
 import { cn, formatPKR } from '@/lib/utils';
 
-type ReportType = 'sales' | 'inventory' | 'customer';
+type ReportType = 'inquiries' | 'inventory' | 'customer';
 
 interface ReportResult {
   title: string;
@@ -22,17 +22,44 @@ interface ReportResult {
   rows: Record<string, unknown>[];
 }
 
+/*
+ * These three must match `reportQuerySchema` on the server exactly.
+ *
+ * They did not. The server dropped `sales` during the catalogue pivot — there
+ * are no orders to report on — but this page still asked for it, and asked for
+ * it *by default*, so opening Reports sent `type=sales` and got a 422 straight
+ * back. The screen has been broken since the pivot and it did not show up
+ * because nothing here is typed against the server enum.
+ */
 const TYPES: { value: ReportType; label: string; body: string }[] = [
-  { value: 'sales', label: 'Sales', body: 'Order-level revenue, tax, discount and delivery.' },
-  { value: 'inventory', label: 'Inventory', body: 'Stock levels, cost price and shelf value.' },
-  { value: 'customer', label: 'Customer', body: 'Lifetime value, repeat buyers and last order.' },
+  {
+    value: 'inquiries',
+    label: 'Inquiries',
+    body: 'Every inquiry in the period, with status, city and what was quoted.',
+  },
+  {
+    value: 'inventory',
+    label: 'Stock & demand',
+    body: 'What is on the shelf, what it cost, and what people keep asking for.',
+  },
+  {
+    value: 'customer',
+    label: 'Customers',
+    body: 'Grouped by phone number: who asks most, who buys, and when they last called.',
+  },
 ];
 
-/** Money-shaped summary keys are formatted as PKR; counts are left as numbers. */
-const MONEY_KEYS = new Set(['revenue', 'averageOrderValue', 'totalDiscount', 'totalStockValue', 'totalLifetimeValue', 'averageLifetimeValue']);
+/**
+ * Summary keys that hold rupees rather than counts.
+ *
+ * `totalPipelineQuoted` is what staff typed in after quoting on the phone —
+ * indicative only, and labelled *pipeline* rather than revenue everywhere,
+ * because none of it is money that has actually changed hands.
+ */
+const MONEY_KEYS = new Set(['totalStockValue', 'totalPipelineQuoted', 'quotedValue']);
 
 export default function AdminReportsPage(): JSX.Element {
-  const [type, setType] = useState<ReportType>('sales');
+  const [type, setType] = useState<ReportType>('inquiries');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 

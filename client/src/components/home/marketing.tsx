@@ -1,56 +1,14 @@
 import Link from 'next/link';
-import {
-  Building2,
-  Cpu,
-  FileText,
-  Factory,
-  HardHat,
-  Quote,
-  Shirt,
-  UtensilsCrossed,
-  Zap,
-} from 'lucide-react';
+import { Building2, Cpu, Factory, HardHat, Quote, Shirt, UtensilsCrossed, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SectionHeading } from '@/components/ui/separator';
-import { CONTACT } from '@/lib/constants';
+import type { Testimonial } from '@/types';
 
-/** RFQ banner, industries, why-choose-us and testimonials. */
-
-export function RfqBanner(): JSX.Element {
-  return (
-    <section className="container py-14">
-      <div className="bg-brand-gradient flex flex-col items-start gap-6 rounded-lg p-8 text-white lg:flex-row lg:items-center lg:justify-between lg:p-12">
-        <div className="max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-cyan">Bulk orders</p>
-          <h2 className="mt-3 font-heading text-2xl font-bold uppercase tracking-tight sm:text-3xl">
-            Need a quote for a large order?
-          </h2>
-          <p className="mt-3 text-white/70">
-            We serve contractors, panel builders and factories. Send your bill of materials and
-            we will come back with one consolidated quotation, usually within a working day.
-          </p>
-        </div>
-
-        <div className="flex shrink-0 flex-wrap gap-3">
-          <Button asChild variant="cta" size="lg">
-            <Link href="/request-quote">
-              <FileText />
-              Request a Quote
-            </Link>
-          </Button>
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
-          >
-            <a href={`tel:${CONTACT.mobile.replace(/\s/g, '')}`}>Call {CONTACT.mobile}</a>
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
+/*
+ * `RfqBanner` lived here. It is now `<SourcingCTA variant="band">` in
+ * components/shared, so the homepage, the inquiry list and the empty search
+ * result all say the same thing in the same words.
+ */
 
 const INDUSTRIES = [
   { Icon: Factory, name: 'Manufacturing', body: 'Panel builds, machine retrofits and spares.' },
@@ -164,46 +122,30 @@ export function WhyChooseUs(): JSX.Element {
 /**
  * Testimonials.
  *
- * Hard-coded placeholders until the client supplies real, attributable
- * quotes — inventing customer names for a live B2B site would be dishonest.
+ * Fed from the admin-managed collection. When nothing is published the whole
+ * section is omitted rather than filled with invented quotes — a B2B buyer in
+ * Lahore can check whether "Kohinoor Textile Mills" really said that.
  */
-const TESTIMONIALS = [
-  {
-    quote:
-      'They had the Terasaki breaker on the shelf when nobody else in Lahore did. Saved us a week of downtime.',
-    author: 'Placeholder — awaiting client approval',
-    role: 'Panel builder, Lahore',
-  },
-  {
-    quote:
-      'Sent a bill of materials in the morning and had a full quotation the same afternoon. Pricing was fair.',
-    author: 'Placeholder — awaiting client approval',
-    role: 'Maintenance manager, textile mill',
-  },
-  {
-    quote:
-      'Good technical advice. They asked the right questions about the load before recommending a drive.',
-    author: 'Placeholder — awaiting client approval',
-    role: 'Consulting engineer',
-  },
-] as const;
+export function Testimonials({ items }: { items: Testimonial[] }): JSX.Element | null {
+  if (items.length === 0) return null;
 
-export function Testimonials(): JSX.Element {
   return (
     <section className="border-t border-border bg-white py-14">
       <div className="container">
         <SectionHeading title="What Customers Say" />
 
         <ul className="grid gap-4 lg:grid-cols-3">
-          {TESTIMONIALS.map((item) => (
-            <li key={item.role} className="flex flex-col rounded-lg border border-border bg-surface p-6">
+          {items.slice(0, 6).map((item) => (
+            <li key={item.id} className="flex flex-col rounded-lg border border-border bg-surface p-6">
               <Quote className="size-6 text-brand-cyan" aria-hidden />
               <blockquote className="mt-3 flex-1 text-sm leading-relaxed text-foreground">
                 {item.quote}
               </blockquote>
               <footer className="mt-4 border-t border-border pt-3">
                 <p className="text-xs font-semibold text-brand-navy">{item.author}</p>
-                <p className="text-2xs text-muted-foreground">{item.role}</p>
+                <p className="text-2xs text-muted-foreground">
+                  {[item.role, item.company].filter(Boolean).join(', ') || '—'}
+                </p>
               </footer>
             </li>
           ))}

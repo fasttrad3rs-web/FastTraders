@@ -67,7 +67,7 @@ const SIDES = {
   bottom: 'inset-x-0 bottom-0 max-h-[85vh] border-t data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom',
 } as const;
 
-/** Edge drawer: mobile navigation, cart preview, filter panel. */
+/** Edge drawer: mobile navigation, inquiry list, filter panel. */
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { side?: keyof typeof SIDES }
@@ -77,7 +77,20 @@ const SheetContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed z-drawer flex flex-col gap-0 border-border bg-white shadow-panel',
+        /*
+         * `z-modal`, matching the overlay — NOT `z-drawer`.
+         *
+         * Radix portals the overlay and the content as siblings, overlay
+         * first. At the same z-index the later element wins, so the panel
+         * paints on top and `backdrop-filter` on the overlay never reaches it.
+         *
+         * With `z-drawer` (60) under the overlay's `z-modal` (70) the panel sat
+         * *behind* the backdrop, so the drawer got the navy tint and the 2px
+         * blur applied to itself — the whole screen, drawer included, looked
+         * out of focus. The centred `DialogContent` never showed this because
+         * it already used `z-modal`.
+         */
+        'fixed z-modal flex flex-col gap-0 border-border bg-white shadow-panel',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-250',
         SIDES[side],
         className,

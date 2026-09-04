@@ -1,5 +1,10 @@
 # Fast Traders — Data Model (Phase 2)
 
+> **Superseded.** This document describes the site before the catalogue-only
+> pivot — it still refers to prices, carts, checkout, payments, orders or
+> customer accounts, none of which exist any more. Kept as build history.
+> See [`CATALOG-PIVOT.md`](./CATALOG-PIVOT.md) for the current model.
+
 15 Mongoose models (14 domain + 1 internal `Counter`). Every entity interface is
 duplicated in `server/src/types/` and `client/src/types/` — those two directories
 must be kept in sync.

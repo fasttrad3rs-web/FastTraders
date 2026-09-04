@@ -63,16 +63,33 @@ function Chip({
   );
 }
 
-/** Stock badge with the wording the counter staff actually use. */
-function StockBadge({ status }: { status: 'in_stock' | 'low_stock' | 'out_of_stock' | 'on_order' }): JSX.Element {
-  const map = {
-    in_stock: { label: 'In stock', variant: 'success' as const },
-    low_stock: { label: 'Low stock', variant: 'warning' as const },
-    out_of_stock: { label: 'Out of stock', variant: 'muted' as const },
-    on_order: { label: 'On order', variant: 'outline' as const },
+export type StockLevel = 'in_stock' | 'low_stock' | 'out_of_stock' | 'on_order';
+
+/**
+ * Stock level, from an actual shelf count. **Admin surfaces only.**
+ *
+ * A buyer never sees this — they get `<AvailabilityBadge>`, which speaks the
+ * four pivoted states (`ready_stock`, `available_on_order`, …). The two
+ * vocabularies are easy to confuse, and confusing them used to crash: the
+ * style guide passed an `Availability` value in through an `as 'in_stock'`
+ * cast, `map[status]` came back `undefined`, and destructuring it threw during
+ * prerender. `tsc` saw nothing, because the cast was a promise that it was
+ * fine.
+ *
+ * So the lookup now falls back instead of throwing. A badge showing the raw
+ * value is a visible bug somebody reports; a page that will not render is an
+ * outage.
+ */
+function StockBadge({ status }: { status: StockLevel }): JSX.Element {
+  const map: Record<StockLevel, { label: string; variant: 'success' | 'warning' | 'muted' | 'outline' }> = {
+    in_stock: { label: 'In stock', variant: 'success' },
+    low_stock: { label: 'Low stock', variant: 'warning' },
+    out_of_stock: { label: 'Out of stock', variant: 'muted' },
+    on_order: { label: 'On order', variant: 'outline' },
   };
-  const { label, variant } = map[status];
-  return <Badge variant={variant}>{label}</Badge>;
+
+  const entry = map[status] ?? { label: String(status), variant: 'muted' as const };
+  return <Badge variant={entry.variant}>{entry.label}</Badge>;
 }
 
 export { Badge, badgeVariants, Chip, StockBadge };

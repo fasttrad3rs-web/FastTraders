@@ -11,7 +11,7 @@ import type { ProductQuery } from '../validators';
  * rather than only the brand already selected.
  */
 
-export type FilterDimension = 'category' | 'brand' | 'price' | 'stock';
+export type FilterDimension = 'category' | 'brand' | 'availability';
 
 export interface ResolvedRefs {
   /** The category plus every descendant, so a parent shows the whole subtree. */
@@ -74,19 +74,19 @@ export function buildProductFilter(
     filter.brand = { $in: refs.brandIds };
   }
 
-  if (!skip.has('price') && (query.minPrice !== undefined || query.maxPrice !== undefined)) {
-    const price: Record<string, number> = {};
-    if (query.minPrice !== undefined) price.$gte = query.minPrice;
-    if (query.maxPrice !== undefined) price.$lte = query.maxPrice;
-    filter.price = price;
+  /*
+   * No price filter. A `minPrice`/`maxPrice` range over a hidden field is an
+   * oracle: a dozen requests would binary-search any product's exact price.
+   * `availability` replaces it as the second facetable dimension, and it is
+   * the question a trade buyer was asking anyway — can I collect it today?
+   */
+  if (!skip.has('availability') && query.availability) {
+    filter.availability = query.availability;
   }
-
-  if (!skip.has('stock') && query.inStock !== undefined) {
-    filter.stock = query.inStock ? { $gt: 0 } : { $lte: 0 };
-  }
-
-  if (query.pricingMode) filter.pricingMode = query.pricingMode;
   if (query.isFeatured !== undefined) filter.isFeatured = query.isFeatured;
+  // Only ever narrows. `isImportItem=false` would hide the import catalogue,
+  // which nobody is asking for, so an explicit false is treated as "no filter".
+  if (query.isImportItem === true) filter.isImportItem = true;
   if (query.tags && query.tags.length > 0) filter.tags = { $all: query.tags };
 
   if (query.search) filter.$text = { $search: query.search };
@@ -111,22 +111,27 @@ export function buildSort(sort: ProductQuery['sort'], hasSearch: boolean): SortS
   }
 
   switch (sort) {
-    case 'price_asc':
-      return { price: 1, _id: 1 };
-    case 'price_desc':
-      return { price: -1, _id: 1 };
     case 'popular':
       return { salesCount: -1, viewCount: -1, _id: 1 };
-    case 'name':
+    case 'name_asc':
       return { name: 1, _id: 1 };
+    case 'name_desc':
+      return { name: -1, _id: 1 };
     case 'newest':
     default:
       return { createdAt: -1, _id: 1 };
   }
 }
 
-/** Fields returned in list responses. `costPrice` is never among them. */
+/**
+ * Public list projection.
+ *
+ * A second line of defence, not the guard — `toPublicProduct` is the guard.
+ * It is kept because fetching less over the wire from Mongo is worth having,
+ * and because naming a path here OVERRIDES `select: false` on the schema, so
+ * this string is exactly where an internal field would sneak back in.
+ */
 export const LIST_PROJECTION =
-  'name slug sku partNumber shortDescription category subCategory brand pricingMode ' +
-  'price comparePrice currency stock stockStatus unit minOrderQty images tags ' +
-  'isFeatured isNewArrival isBestSeller ratingAvg reviewCount createdAt';
+  'name slug sku partNumber shortDescription category subCategory brand ' +
+  'availability leadTime isImportItem unit minOrderQty images tags ' +
+  'isFeatured isNewArrival isBestSeller viewCount seo createdAt';

@@ -114,7 +114,7 @@ export default function IndustriesPage(): JSX.Element {
           Send the bill of materials and we will quote the lot in one go.
         </p>
         <Button asChild variant="cta" size="lg" className="mt-5">
-          <Link href="/request-quote">Request a quote</Link>
+          <Link href="/submit-inquiry">Request a quote</Link>
         </Button>
       </div>
     </div>

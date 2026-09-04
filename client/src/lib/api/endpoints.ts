@@ -49,8 +49,63 @@ export async function serverFetch<T>(
     return body.success ? body.data : null;
   } catch {
     // Network failure or the API being down — render the page without this slice.
+    noteUnreachable(url);
     return null;
   }
+}
+
+/*
+ * One loud warning instead of thirty silent nulls.
+ *
+ * When the API is unreachable during `next build`, Next logs a raw
+ * `[TypeError: fetch failed]` with a stack trace for every single call — around
+ * thirty of them — and the build then *succeeds*, because `serverFetch` catches
+ * and returns null by design. The result is a set of statically prerendered
+ * pages containing no products, no categories and no banners, and nothing in
+ * the output that says so.
+ *
+ * With ISR (`revalidate: 300`) those empty pages are what real visitors get
+ * until the first regeneration completes. That is a bad first impression on a
+ * catalogue site and it is entirely invisible in the build log.
+ *
+ * So: say it once, in words, with the fix.
+ */
+let warned = false;
+let failureCount = 0;
+
+function noteUnreachable(url: string): void {
+  failureCount += 1;
+  if (warned) return;
+  warned = true;
+
+  const origin = (() => {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return url;
+    }
+  })();
+
+  // eslint-disable-next-line no-console -- build-time diagnostic, deliberately loud
+  console.warn(
+    [
+      '',
+      '  ⚠  The API at ' + origin + ' is unreachable.',
+      '',
+      '     Pages are still being generated, but WITHOUT catalogue data —',
+      '     no products, categories, brands or banners. With ISR these empty',
+      '     pages are served to real visitors until the first revalidation.',
+      '',
+      '     If this is a production build: start the API first, and point',
+      '     NEXT_PUBLIC_API_URL at it before building.',
+      '',
+    ].join('\n'),
+  );
+}
+
+/** How many server fetches failed. Exposed for build tooling, not for pages. */
+export function unreachableFetchCount(): number {
+  return failureCount;
 }
 
 /** Build a query string, dropping empty values. */

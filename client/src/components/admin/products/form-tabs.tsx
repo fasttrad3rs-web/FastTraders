@@ -1,6 +1,6 @@
 'use client';
 
-import { useFieldArray, type UseFormReturn } from 'react-hook-form';
+import { useFieldArray } from 'react-hook-form';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,163 +8,120 @@ import { Field, Label } from '@/components/ui/label';
 import { Input, Textarea } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert } from '@/components/ui/alert';
+import { AVAILABILITY, AVAILABILITY_LABELS } from '@/lib/availability';
 import type { ProductFormValues } from './form-schema';
+import type { Form } from './form-types';
 
 /** Panels for the product form's seven tabs. */
 
-type Form = UseFormReturn<ProductFormValues>;
-type Taxonomy = { id: string; name: string; level?: number }[];
+/**
+ * The form handle, loosened at the third generic.
+ *
+ * zod `.default()` makes a field optional going in and required coming out,
+ * so RHF's transformed-values generic does not line up with a plain
+ * `UseFormReturn<Values>`. Widening it here is contained to one alias; the
+ * alternative is a cast at every one of the seven tab call sites.
+ */
 
-export function BasicTab({ form, categories, brands }: { form: Form; categories: Taxonomy; brands: Taxonomy }): JSX.Element {
+export function PricingTab({ form }: { form: Form }): JSX.Element {
   const { register, watch, setValue, formState } = form;
   const { errors } = formState;
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Product name" htmlFor="pf-name" required error={errors.name?.message}>
-          <Input id="pf-name" {...register('name')} hasError={Boolean(errors.name)} />
+      <Alert variant="info" className="text-xs">
+        These prices are <strong>internal only</strong>. The storefront shows
+        &ldquo;Price on request&rdquo; on every product and routes the customer to a phone call,
+        WhatsApp, or an enquiry.
+      </Alert>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Last quoted price (Rs.)" htmlFor="pf-last-quoted" hint="Internal reference. Never published." error={errors.lastQuotedPrice?.message}>
+          <Input id="pf-last-quoted" type="number" min={0} step="0.01" {...register('lastQuotedPrice')} hasError={Boolean(errors.lastQuotedPrice)} />
         </Field>
-        <Field label="URL slug" htmlFor="pf-slug" hint="Generated from the name; edit only if you must." error={errors.slug?.message}>
-          <Input id="pf-slug" className="font-mono text-xs" {...register('slug')} hasError={Boolean(errors.slug)} />
+        <Field label="Internal cost (Rs.)" htmlFor="pf-cost" hint="Drives stock valuation in reports. Never published.">
+          <Input id="pf-cost" type="number" min={0} step="0.01" {...register('internalCost')} />
         </Field>
-        <Field label="SKU" htmlFor="pf-sku" required error={errors.sku?.message}>
-          <Input id="pf-sku" className="font-mono" {...register('sku')} hasError={Boolean(errors.sku)} />
-        </Field>
-        <Field label="Manufacturer part number" htmlFor="pf-mpn" hint="What trade buyers search by.">
-          <Input id="pf-mpn" className="font-mono" {...register('partNumber')} />
-        </Field>
-        <Field label="Category" htmlFor="pf-category" required error={errors.category?.message}>
-          <Select value={watch('category')} onValueChange={(value) => setValue('category', value, { shouldDirty: true })}>
-            <SelectTrigger id="pf-category"><SelectValue placeholder="Choose…" /></SelectTrigger>
+      </div>
+
+      {/*
+        Availability is the ONLY stock signal a buyer ever sees, and until now
+        the form had no input for it — every product created here kept the
+        `available_on_order` default forever. Setting "Stock on hand" to 10 did
+        nothing to the storefront, because that is a separate internal count.
+        It leads this tab for that reason.
+      */}
+      <div className="grid gap-4 rounded-lg border border-brand-cyan/40 bg-brand-cyan/5 p-4 sm:grid-cols-2">
+        <Field
+          label="Availability — what the customer sees"
+          htmlFor="pf-availability"
+          hint="Shown on the card and the product page."
+          error={errors.availability?.message}
+        >
+          <Select
+            value={watch('availability')}
+            onValueChange={(value) =>
+              setValue('availability', value as ProductFormValues['availability'], {
+                shouldDirty: true,
+              })
+            }
+          >
+            <SelectTrigger id="pf-availability"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {categories.map((item) => (
-                <SelectItem key={item.id} value={item.id}>
-                  {'— '.repeat(item.level ?? 0)}{item.name}
+              {AVAILABILITY.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {AVAILABILITY_LABELS[value]}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </Field>
-        <Field label="Brand" htmlFor="pf-brand" required error={errors.brand?.message}>
-          <Select value={watch('brand')} onValueChange={(value) => setValue('brand', value, { shouldDirty: true })}>
-            <SelectTrigger id="pf-brand"><SelectValue placeholder="Choose…" /></SelectTrigger>
-            <SelectContent>
-              {brands.map((item) => (
-                <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        <Field
+          label="Lead time"
+          htmlFor="pf-lead"
+          hint='Optional, e.g. "2-3 days" or "3-4 weeks (imported)".'
+        >
+          <Input id="pf-lead" placeholder="2-3 days" {...register('leadTime')} />
         </Field>
       </div>
 
-      <Field label="Short description" htmlFor="pf-short" hint="One line, shown on cards and in search results.">
-        <Textarea id="pf-short" rows={2} {...register('shortDescription')} />
-      </Field>
-
-      <Field
-        label="Full description"
-        htmlFor="pf-desc"
-        required
-        hint="Basic HTML is supported: <p>, <strong>, <ul>, <li>."
-        error={errors.description?.message}
-      >
-        <Textarea id="pf-desc" rows={8} className="font-mono text-xs" {...register('description')} hasError={Boolean(errors.description)} />
-      </Field>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Tags" htmlFor="pf-tags" hint="Comma separated — these feed search and filters.">
-          <Input id="pf-tags" placeholder="mccb, 250a, schneider" {...register('tags')} />
-        </Field>
-        <Field label="Warranty" htmlFor="pf-warranty">
-          <Input id="pf-warranty" placeholder="12 months manufacturer warranty" {...register('warranty')} />
-        </Field>
-      </div>
-
-      <fieldset className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
-        <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Flags</legend>
-        {([
-          ['isActive', 'Active — visible on the storefront'],
-          ['isFeatured', 'Featured on the homepage'],
-          ['isNewArrival', 'New arrival'],
-          ['isBestSeller', 'Best seller'],
-        ] as const).map(([key, label]) => (
-          <div key={key} className="flex items-center gap-2.5">
-            <Checkbox
-              id={`pf-${key}`}
-              checked={watch(key)}
-              onCheckedChange={(checked) => setValue(key, checked === true, { shouldDirty: true })}
-            />
-            <Label htmlFor={`pf-${key}`} className="font-normal">{label}</Label>
-          </div>
-        ))}
-      </fieldset>
-    </div>
-  );
-}
-
-export function PricingTab({ form }: { form: Form }): JSX.Element {
-  const { register, watch, setValue, formState } = form;
-  const { errors } = formState;
-  const mode = watch('pricingMode');
-
-  return (
-    <div className="space-y-4">
-      <Field label="Pricing mode" htmlFor="pf-mode" required>
-        <Select value={mode} onValueChange={(value) => setValue('pricingMode', value as ProductFormValues['pricingMode'], { shouldDirty: true })}>
-          <SelectTrigger id="pf-mode"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="retail">Retail — priced and buyable online</SelectItem>
-            <SelectItem value="quote">Quote only — price hidden, RFQ</SelectItem>
-            <SelectItem value="both">Both — priced, with a bulk-quote option</SelectItem>
-          </SelectContent>
-        </Select>
-      </Field>
-
-      {mode === 'quote' ? (
-        <Alert variant="info" className="text-xs">
-          Quote-only products show &ldquo;Price on request&rdquo; and go to the inquiry cart. No price
-          is published, and none is written into the product schema for Google.
-        </Alert>
-      ) : null}
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Selling price (Rs.)" htmlFor="pf-price" required={mode !== 'quote'} error={errors.price?.message}>
-          <Input id="pf-price" type="number" min={0} step="0.01" disabled={mode === 'quote'} {...register('price')} hasError={Boolean(errors.price)} />
-        </Field>
-        <Field label="Compare-at price (Rs.)" htmlFor="pf-compare" hint="Shown struck through." error={errors.comparePrice?.message}>
-          <Input id="pf-compare" type="number" min={0} step="0.01" disabled={mode === 'quote'} {...register('comparePrice')} hasError={Boolean(errors.comparePrice)} />
-        </Field>
-        <Field label="Cost price (Rs.)" htmlFor="pf-cost" hint="Internal only. Never exposed publicly.">
-          <Input id="pf-cost" type="number" min={0} step="0.01" {...register('costPrice')} />
-        </Field>
+      <div className="flex items-center gap-2.5 rounded-lg border border-border p-4">
+        <Checkbox
+          id="pf-mto"
+          checked={watch('isImportItem')}
+          onCheckedChange={(checked) => setValue('isImportItem', checked === true, { shouldDirty: true })}
+        />
+        <Label htmlFor="pf-mto" className="font-normal">
+          Sourced or imported to order — not held in stock
+        </Label>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Tax rate (%)" htmlFor="pf-tax">
-          <Input id="pf-tax" type="number" min={0} max={100} {...register('taxRate')} />
-        </Field>
-        <Field label="Stock on hand" htmlFor="pf-stock" hint="Use the stock adjustment action for audited changes.">
+        <Field
+          label="Stock on hand"
+          htmlFor="pf-stock"
+          hint="Internal count for reports. Buyers see Availability, not this."
+        >
           <Input id="pf-stock" type="number" min={0} {...register('stock')} />
         </Field>
         <Field label="Low-stock threshold" htmlFor="pf-threshold">
           <Input id="pf-threshold" type="number" min={0} {...register('lowStockThreshold')} />
         </Field>
-        <Field label="Minimum order qty" htmlFor="pf-moq">
+        <Field label="Typical minimum qty" htmlFor="pf-moq">
           <Input id="pf-moq" type="number" min={1} {...register('minOrderQty')} />
         </Field>
+        <Field label="Unit" htmlFor="pf-unit">
+          <Select value={watch('unit')} onValueChange={(value) => setValue('unit', value as ProductFormValues['unit'], { shouldDirty: true })}>
+            <SelectTrigger id="pf-unit"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(['piece', 'meter', 'roll', 'box', 'set'] as const).map((unit) => (
+                <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
       </div>
-
-      <Field label="Unit" htmlFor="pf-unit">
-        <Select value={watch('unit')} onValueChange={(value) => setValue('unit', value as ProductFormValues['unit'], { shouldDirty: true })}>
-          <SelectTrigger id="pf-unit" className="max-w-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {(['piece', 'meter', 'roll', 'box', 'set'] as const).map((unit) => (
-              <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
     </div>
   );
 }
@@ -260,3 +217,4 @@ export function SeoTab({ form }: { form: Form }): JSX.Element {
     </div>
   );
 }
+

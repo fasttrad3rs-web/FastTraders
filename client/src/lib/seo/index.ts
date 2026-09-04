@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { SITE } from '@/lib/constants';
 
+/** Branded 1200x630 card used when a page supplies no image of its own. */
+export const DEFAULT_OG_IMAGE = '/brand/og-default.png';
+
 export * from './business';
 export * from './schema';
 
@@ -26,7 +29,12 @@ export function buildMetadata({
   noIndex?: boolean;
 }): Metadata {
   const url = `${SITE.url}${path}`;
-  const ogImage = image?.startsWith('http') ? image : image ? `${SITE.url}${image}` : undefined;
+  /*
+   * Every page gets a share card. Most Fast Traders links are pasted into
+   * WhatsApp, where a bare URL with no preview reads like spam.
+   */
+  const resolved = image ?? DEFAULT_OG_IMAGE;
+  const ogImage = resolved.startsWith('http') ? resolved : `${SITE.url}${resolved}`;
 
   return {
     title,
@@ -40,13 +48,13 @@ export function buildMetadata({
       siteName: SITE.name,
       title,
       description,
-      ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630, alt: title }] } : {}),
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      ...(ogImage ? { images: [ogImage] } : {}),
+      images: [ogImage],
     },
     ...(noIndex ? { robots: { index: false, follow: false } } : {}),
   };

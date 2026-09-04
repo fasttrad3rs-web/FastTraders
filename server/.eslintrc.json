@@ -4,7 +4,18 @@
   "parserOptions": {
     "ecmaVersion": 2022,
     "sourceType": "module",
-    "project": "./tsconfig.json"
+    /*
+     * Both projects. The build config excludes `src/__tests__`, so listing it
+     * alone makes type-aware linting fail on every test file with "not found
+     * in any of the provided project(s)" — which is what `npm run lint` was
+     * doing before anyone read past the first error.
+     *
+     * `tsconfig.scripts.json` is here for the same reason: `scripts/` was in no
+     * project either, so the editor reported a parse error on every
+     * maintenance script while `npm run lint` — scoped to `src/` — stayed
+     * green. That gap is why VS Code showed 34 problems against a clean CLI.
+     */
+    "project": ["./tsconfig.json", "./tsconfig.test.json", "./tsconfig.scripts.json"]
   },
   "plugins": ["@typescript-eslint"],
   "extends": [

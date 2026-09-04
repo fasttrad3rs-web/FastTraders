@@ -4,7 +4,7 @@ export { Logo } from './logo';
 export { AnnouncementBar } from './announcement-bar';
 export { WhatsAppButton, FloatingWhatsApp } from './whatsapp-button';
 export { ScrollToTop } from './scroll-to-top';
-export { MobileBottomNav } from './header/mobile-nav';
+export { MobileActionBar } from './mobile-action-bar';
 export { SearchBar } from './header/search-bar';
 export { MegaMenu } from './header/mega-menu';
 export { NavBar, PRIMARY_NAV } from './header/nav-bar';

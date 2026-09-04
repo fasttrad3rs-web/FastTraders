@@ -2,7 +2,7 @@
   "name": "fast-traders",
   "version": "1.0.0",
   "private": true,
-  "description": "Fast Traders — industrial & electrical equipment e-commerce + RFQ platform (Lahore, Pakistan)",
+  "description": "Fast Traders \u2014 industrial & electrical equipment e-commerce + RFQ platform (Lahore, Pakistan)",
   "workspaces": [
     "client",
     "server"
@@ -20,8 +20,18 @@
     "lint": "npm --workspace client run lint && npm --workspace server run lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "typecheck": "npm --workspace client run typecheck && npm --workspace server run typecheck",
+    "verify": "node scripts/verify/catalog-pivot.cjs && node scripts/verify/commerce-audit.cjs",
+    "doctor": "npm --workspace server run doctor",
+    "seed:dryrun": "npm --workspace server run seed:dryrun",
     "seed": "npm --workspace server run seed",
-    "install:all": "npm install"
+    "seed:live": "npm --workspace server run seed:live",
+    "install:all": "npm install",
+    "audit:commerce": "node scripts/verify/commerce-audit.cjs",
+    "verify:cloudinary": "npm --workspace server run verify:cloudinary",
+    "test": "npm --workspace server run test",
+    "test:leak": "npm --workspace server run test -- price-leak",
+    "ci": "npm run typecheck && npm run lint && npm run test && npm run verify && npm run build:client && npm run verify:bundle",
+    "verify:bundle": "node scripts/verify/bundle-scan.cjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

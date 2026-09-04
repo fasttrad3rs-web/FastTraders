@@ -3,7 +3,6 @@
 import * as React from 'react';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import { cn } from '@/lib/utils';
-import { formatPKR } from '@/lib/utils';
 
 /** Range slider — the catalogue price filter is its main use. */
 const Slider = React.forwardRef<
@@ -28,37 +27,5 @@ const Slider = React.forwardRef<
   </SliderPrimitive.Root>
 ));
 Slider.displayName = SliderPrimitive.Root.displayName;
-
-/** Price range filter with live PKR labels either side of the track. */
-export function PriceRangeSlider({
-  min,
-  max,
-  value,
-  onValueChange,
-  step = 500,
-}: {
-  min: number;
-  max: number;
-  value: [number, number];
-  onValueChange: (value: [number, number]) => void;
-  step?: number;
-}): JSX.Element {
-  return (
-    <div className="space-y-3">
-      <Slider
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onValueChange={(next) => onValueChange([next[0] ?? min, next[1] ?? max])}
-        aria-label="Price range"
-      />
-      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
-        <span>{formatPKR(value[0])}</span>
-        <span>{formatPKR(value[1])}</span>
-      </div>
-    </div>
-  );
-}
 
 export { Slider };

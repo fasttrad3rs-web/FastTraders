@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    /*
+     * The base config pins `typeRoots` to this workspace, which is right for
+     * the build. npm hoists dev dependencies to the repo root, so the test
+     * config has to look there too or `describe`/`it` are undefined.
+     */
+    "typeRoots": ["../node_modules/@types", "./node_modules/@types", "./src/types"],
+    "types": ["node", "jest"],
+    "noUnusedLocals": false
+  },
+  "include": ["src/**/*.ts"],
+  /*
+   * `extends` inherits `exclude` as well as `include`, and the base config
+   * excludes `src/__tests__` so the build does not emit the suites. Without
+   * this override the test files belong to no project at all, and type-aware
+   * ESLint refuses to parse them.
+   */
+  "exclude": ["node_modules", "dist"]
+}

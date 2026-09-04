@@ -2,7 +2,7 @@ import { Schema, model, type HydratedDocument, type Model } from 'mongoose';
 import { jsonTransform } from './shared.schemas';
 import type { ContactSource, ContactStatus } from '../types';
 
-/** Enquiries from the contact form, product pages and the footer. */
+/** Messages from the contact form, product pages and the footer. */
 export interface IContact {
   name: string;
   email: string;

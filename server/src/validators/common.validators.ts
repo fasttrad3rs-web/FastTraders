@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { PROVINCES } from '../types/user.types';
 
 /** Reusable primitives shared by every validator module. */
 
@@ -45,21 +44,6 @@ export const passwordSchema = z
 export const nameSchema = z.string().trim().min(2, 'Name is too short').max(120);
 
 /** National Tax Number (7+1 digits) or CNIC (13 digits). */
-export const ntnSchema = z
-  .string()
-  .trim()
-  .regex(/^\d{7}-?\d$|^\d{13}$/, 'Enter a valid NTN or CNIC');
-
-export const addressSchema = z.object({
-  label: z.string().trim().min(1).max(40).default('Home'),
-  line1: z.string().trim().min(3, 'Address is too short').max(200),
-  line2: z.string().trim().max(200).optional(),
-  city: z.string().trim().min(2).max(80),
-  province: z.enum(PROVINCES),
-  postalCode: z.string().trim().max(10).optional(),
-  isDefault: z.boolean().default(false),
-});
-
 /** Standard page/limit query, coerced from strings. */
 export const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -79,6 +63,23 @@ export const booleanQuerySchema = z.union([
   z.boolean(),
   z.enum(['true', 'false', '1', '0']).transform((value) => value === 'true' || value === '1'),
 ]);
+
+/**
+ * An image reference: either an absolute http(s) URL (Cloudinary, in practice)
+ * or a root-relative path into `client/public`.
+ *
+ * A bare `z.string().url()` rejects the second form, which meant a seeded
+ * banner using the bundled placeholder artwork could be viewed in the admin
+ * but not saved — the update 422'd on a field the operator had not touched.
+ */
+export const imageRefSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .refine(
+    (value) => /^https?:\/\//.test(value) || /^\/[^/]/.test(value),
+    'Must be an https URL or a root-relative path such as /placeholders/x.svg',
+  );
 
 export const idParamSchema = z.object({ id: objectIdSchema });
 export const slugParamSchema = z.object({ slug: slugSchema });

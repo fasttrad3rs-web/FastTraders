@@ -79,10 +79,33 @@ export function ResourceScreen<T extends ResourceRecord>({
   };
 
   const save = async (): Promise<void> => {
-    // Drop blanks so the server's defaults and optional fields still apply.
-    const payload = Object.fromEntries(
-      Object.entries(values).filter(([, value]) => value !== '' && value !== undefined),
-    );
+    /*
+     * Creating and editing need opposite treatment of a blank field.
+     *
+     * On CREATE, dropping blanks is right: the server's `.default()` values
+     * then apply, and an omitted optional field is simply absent.
+     *
+     * On EDIT it was wrong, and quietly so. Blanks were dropped from the patch
+     * too, which meant clearing a banner's subtitle, a brand's country or a
+     * testimonial's role sent a PATCH that never mentioned the field — the old
+     * value stayed, the toast still said "updated", and the text reappeared on
+     * the next load. There was no way to remove an optional value at all.
+     *
+     * `null` is the server's "unset this" signal; the update schemas mark every
+     * clearable field `.nullable()`.
+     */
+    const entries = Object.entries(values).filter(([, value]) => value !== undefined);
+
+    // Only optional fields become `null`. Blanking a required one should reach
+    // the server as an empty string and fail validation with a message about
+    // that field, rather than as a null the schema rejects more obscurely.
+    const optional = new Set(fields.filter((field) => !field.required).map((field) => field.name));
+
+    const payload = editing
+      ? Object.fromEntries(
+          entries.map(([key, value]) => [key, value === '' && optional.has(key) ? null : value]),
+        )
+      : Object.fromEntries(entries.filter(([, value]) => value !== ''));
 
     try {
       if (editing) await crud.update.mutateAsync({ id: editing.id, patch: payload });

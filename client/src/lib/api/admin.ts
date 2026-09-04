@@ -9,8 +9,37 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 import { apiClient, unwrap } from '@/lib/api-client';
-import type { Product } from '@/types';
-import type { OrderResponse } from './cart.types';
+import type { Product, ProductVariant } from '@/types';
+
+/**
+ * Admin view of a product.
+ *
+ * `unit` and `minOrderQty` are already on the public shape — a buyer cannot
+ * read "12" without knowing whether that is pieces or metres. What this adds
+ * is everything the whitelist drops.
+ */
+export interface AdminProduct extends Product {
+  /*
+   * Everything the public `Product` drops. The admin API opts into these
+   * explicitly with `.select('+lastQuotedPrice +internalCost +supplierNotes')`,
+   * and this is the only client-side type that names them.
+   */
+  lastQuotedPrice?: number;
+  internalCost?: number;
+  supplierNotes?: string;
+  stock: number;
+  lowStockThreshold: number;
+  isActive: boolean;
+  salesCount: number;
+  updatedAt: string;
+  variants: AdminProductVariant[];
+}
+
+export interface AdminProductVariant extends ProductVariant {
+  price?: number;
+  stock: number;
+}
+
 
 /** Typed hooks over the Phase 4 admin API. */
 
@@ -20,8 +49,6 @@ export const adminKeys = {
   recent: ['admin', 'recent'] as const,
   products: (params: Record<string, unknown>) => ['admin', 'products', params] as const,
   product: (id: string) => ['admin', 'product', id] as const,
-  orders: (params: Record<string, unknown>) => ['admin', 'orders', params] as const,
-  order: (id: string) => ['admin', 'order', id] as const,
   taxonomy: (kind: string) => ['admin', kind] as const,
 };
 
@@ -42,43 +69,66 @@ export interface AdminList<T> {
 
 /* ------------------------------- Dashboard ------------------------------- */
 
-export interface PeriodRevenue {
-  revenue: number;
-  orders: number;
-}
-
+/**
+ * MIRRORS `server/src/services/dashboard.service.ts` — keep the two in step.
+ *
+ * These declarations had drifted right through the catalogue pivot: the client
+ * still described `enquiries`, `quotations` and `quotationWinRate` while the
+ * API had moved to `inquiries`, `byStatus` and `winRate`. Because the client
+ * declares its *own* copy, `tsc` had nothing to compare against and stayed
+ * silent — the drift only surfaced as a runtime crash reading
+ * `stats.quotations.new`. `npm run verify` now diffs the two field by field.
+ *
+ * There is no revenue on this dashboard because the site takes no money. The
+ * funnel is: shortlist → inquiry → contacted → quoted on the phone → won or
+ * lost. Quoted value is labelled *pipeline* everywhere, never income.
+ */
 export interface DashboardStats {
-  revenue: { today: PeriodRevenue; week: PeriodRevenue; month: PeriodRevenue; year: PeriodRevenue };
-  ordersByStatus: Record<string, number>;
-  paymentsByStatus: Record<string, number>;
-  quotations: { new: number; awaitingResponse: number; total: number };
-  inventory: { lowStock: number; outOfStock: number; totalActive: number };
-  customers: { newThisMonth: number; total: number };
-  averageOrderValue: number;
-  quotationConversionRate: number;
-  checkoutConversionRate: number;
-  pending: { reviews: number; contacts: number };
+  inquiries: { newToday: number; newThisWeek: number; total: number; open: number };
+  /** Counts keyed by inquiry status — `new`, `contacted`, `won`, and so on. */
+  byStatus: Record<string, number>;
+  /** Counts keyed by inquiry type — `product_inquiry`, `sourcing_request`. */
+  byType: Record<string, number>;
+  /** Value quoted verbally. Indicative only — somebody typed it in after a call. */
+  pipeline: { quotedThisMonth: number; wonThisMonth: number; averageQuote: number };
+  inventory: { lowStock: number; outOfStock: number; imported: number; totalActive: number };
+  winRate: number;
+  /** In `new` with nobody assigned — the thing to fix before lunch. */
+  unassigned: number;
+  /** Shortlists with items that were never submitted. */
+  abandonedLists: number;
+  pending: { contacts: number; testimonials: number };
+  /** Still `new` after a full working day — the number that should be zero. */
+  overdue: number;
+  /** Chase dates that have arrived or passed on still-open inquiries. */
+  followUpsDue: number;
+  /** Where the demand comes from. */
+  byCity: { name: string; inquiries: number }[];
+  /** Most-asked-for items that are not in the catalogue. */
+  topRequestedNotStocked: { name: string; inquiries: number }[];
 }
 
+/** One bar/row of demand: how many inquiries touched it, and for how many units. */
 export interface NamedTotal {
   id: string;
   name: string;
-  revenue: number;
+  inquiries: number;
   units: number;
 }
 
 export interface DashboardCharts {
-  salesOverTime: { period: string; revenue: number; orders: number }[];
-  topProducts: NamedTotal[];
-  revenueByCategory: NamedTotal[];
-  revenueByBrand: NamedTotal[];
+  inquiriesOverTime: { period: string; inquiries: number; won: number }[];
+  topInquiredProducts: NamedTotal[];
+  inquiriesByCategory: NamedTotal[];
+  inquiriesByBrand: NamedTotal[];
 }
 
-export function useAdminStats(): UseQueryResult<DashboardStats> {
+export function useAdminStats({ enabled = true } = {}): UseQueryResult<DashboardStats> {
   return useQuery({
     queryKey: adminKeys.stats,
     queryFn: async () => unwrap(await apiClient.get<DashboardStats>('/admin/dashboard/stats')),
     staleTime: 60_000,
+    enabled,
   });
 }
 
@@ -112,18 +162,18 @@ export function useAdminRecent(): UseQueryResult<Record<string, unknown[]>> {
 /** Query params are always scalars; the type mirrors the api-client contract. */
 export type AdminQuery = Record<string, string | number | boolean | undefined>;
 
-export function useAdminProducts(params: AdminQuery): UseQueryResult<AdminList<Product>> {
+export function useAdminProducts(params: AdminQuery): UseQueryResult<AdminList<AdminProduct>> {
   return useQuery({
     queryKey: adminKeys.products(params),
-    queryFn: async () => unwrap(await apiClient.get<AdminList<Product>>('/admin/products', { params })),
+    queryFn: async () => unwrap(await apiClient.get<AdminList<AdminProduct>>('/admin/products', { params })),
     placeholderData: keepPreviousData,
   });
 }
 
-export function useAdminProduct(id: string): UseQueryResult<Product> {
+export function useAdminProduct(id: string): UseQueryResult<AdminProduct> {
   return useQuery({
     queryKey: adminKeys.product(id),
-    queryFn: async () => unwrap(await apiClient.get<Product>(`/admin/products/${id}`)),
+    queryFn: async () => unwrap(await apiClient.get<AdminProduct>(`/admin/products/${id}`)),
     enabled: id.length > 0,
   });
 }
@@ -135,9 +185,11 @@ export function useAdminProduct(id: string): UseQueryResult<Product> {
  * instant, and the previous list is restored if the request fails.
  */
 export function useProductMutations(): {
-  create: UseMutationResult<Product, Error, Record<string, unknown>>;
-  update: UseMutationResult<Product, Error, { id: string; patch: Record<string, unknown> }>;
-  remove: UseMutationResult<Product, Error, string>;
+  create: UseMutationResult<AdminProduct, Error, Record<string, unknown>>;
+  update: UseMutationResult<AdminProduct, Error, { id: string; patch: Record<string, unknown> }>;
+  remove: UseMutationResult<AdminProduct, Error, string>;
+  /** Permanent. `remove` only hides; this one is gone. */
+  purge: UseMutationResult<{ id: string; name: string }, Error, string>;
   bulk: UseMutationResult<{ modified: number }, Error, Record<string, unknown>>;
   adjustStock: UseMutationResult<
     { sku: string; previous: number; current: number },
@@ -152,20 +204,29 @@ export function useProductMutations(): {
 
   return {
     create: useMutation({
-      mutationFn: async (input) => unwrap(await apiClient.post<Product>('/admin/products', input)),
+      mutationFn: async (input) => unwrap(await apiClient.post<AdminProduct>('/admin/products', input)),
       onSuccess: invalidate,
     }),
     update: useMutation({
       mutationFn: async ({ id, patch }) =>
-        unwrap(await apiClient.patch<Product>(`/admin/products/${id}`, patch)),
+        unwrap(await apiClient.patch<AdminProduct>(`/admin/products/${id}`, patch)),
       onSuccess: (product) => {
         queryClient.setQueryData(adminKeys.product(product.id), product);
         invalidate();
       },
     }),
     remove: useMutation({
-      mutationFn: async (id) => unwrap(await apiClient.delete<Product>(`/admin/products/${id}`)),
+      mutationFn: async (id) => unwrap(await apiClient.delete<AdminProduct>(`/admin/products/${id}`)),
       onSuccess: invalidate,
+    }),
+    purge: useMutation({
+      mutationFn: async (id) =>
+        unwrap(await apiClient.delete<{ id: string; name: string }>(`/admin/products/${id}/permanent`)),
+      onSuccess: (result) => {
+        // Nothing left to cache — drop the detail entry as well as the list.
+        queryClient.removeQueries({ queryKey: adminKeys.product(result.id) });
+        invalidate();
+      },
     }),
     bulk: useMutation({
       mutationFn: async (input) =>
@@ -185,62 +246,52 @@ export function useProductMutations(): {
   };
 }
 
-/* --------------------------------- Orders -------------------------------- */
 
-export function useAdminOrders(params: AdminQuery): UseQueryResult<AdminList<OrderResponse>> {
-  return useQuery({
-    queryKey: adminKeys.orders(params),
-    queryFn: async () => unwrap(await apiClient.get<AdminList<OrderResponse>>('/admin/orders', { params })),
-    placeholderData: keepPreviousData,
-  });
-}
-
-export function useAdminOrder(id: string): UseQueryResult<OrderResponse> {
-  return useQuery({
-    queryKey: adminKeys.order(id),
-    queryFn: async () => unwrap(await apiClient.get<OrderResponse>(`/admin/orders/${id}`)),
-    enabled: id.length > 0,
-  });
-}
-
-export function useOrderMutations(id: string): {
-  status: UseMutationResult<OrderResponse, Error, { status: string; note?: string; notifyCustomer: boolean }>;
-  payment: UseMutationResult<OrderResponse, Error, Record<string, unknown>>;
-  tracking: UseMutationResult<OrderResponse, Error, Record<string, unknown>>;
-} {
-  const queryClient = useQueryClient();
-  const onSuccess = (order: OrderResponse): void => {
-    queryClient.setQueryData(adminKeys.order(id), order);
-    void queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-  };
-
-  return {
-    status: useMutation({
-      mutationFn: async (body) =>
-        unwrap(await apiClient.patch<OrderResponse>(`/admin/orders/${id}/status`, body)),
-      onSuccess,
-    }),
-    payment: useMutation({
-      mutationFn: async (body) =>
-        unwrap(await apiClient.patch<OrderResponse>(`/admin/orders/${id}/payment`, body)),
-      onSuccess,
-    }),
-    tracking: useMutation({
-      mutationFn: async (body) =>
-        unwrap(await apiClient.patch<OrderResponse>(`/admin/orders/${id}/tracking`, body)),
-      onSuccess,
-    }),
-  };
-}
 
 /** Taxonomy lists reused by the product form's selects. */
-export function useTaxonomy(kind: 'categories' | 'brands'): UseQueryResult<
-  { id: string; name: string; slug: string; level?: number }[]
-> {
+/**
+ * Staff accounts, for the assignee pickers.
+ *
+ * Only active ones: assigning an inquiry to somebody who has left is a lead
+ * nobody is looking at, which is worse than leaving it unassigned.
+ */
+export function useStaff(): UseQueryResult<{ id: string; name: string; email: string }[]> {
+  return useQuery({
+    queryKey: ['admin', 'staff'],
+    queryFn: async () => {
+      const page = unwrap(
+        await apiClient.get<AdminList<{ id: string; name: string; email: string }>>(
+          '/admin/users',
+          { params: { isActive: true, limit: 100 } },
+        ),
+      );
+      return page.items;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * Flat category/brand list for the product form's selects.
+ *
+ * `parent` matters: the sub-category select has to offer only the children of
+ * the chosen category. Without it the form listed every nested category, so a
+ * product could be filed under Control Components with a sub-category of
+ * Sensors — which belongs to Automation — and then appear under neither.
+ */
+export interface TaxonomyOption {
+  id: string;
+  name: string;
+  slug: string;
+  level?: number;
+  /** Null for a top-level category. Absent on brands. */
+  parent?: string | null;
+}
+
+export function useTaxonomy(kind: 'categories' | 'brands'): UseQueryResult<TaxonomyOption[]> {
   return useQuery({
     queryKey: adminKeys.taxonomy(kind),
-    queryFn: async () =>
-      unwrap(await apiClient.get<{ id: string; name: string; slug: string; level?: number }[]>(`/admin/${kind}`)),
+    queryFn: async () => unwrap(await apiClient.get<TaxonomyOption[]>(`/admin/${kind}`)),
     staleTime: 5 * 60_000,
   });
 }

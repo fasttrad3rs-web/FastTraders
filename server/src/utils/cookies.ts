@@ -4,7 +4,7 @@ import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '../middleware/auth';
 import type { AuthTokens } from '../types';
 
 /**
- * Cookie helpers for the auth token pair and the guest cart session.
+ * Cookie helpers for the staff auth token pair and the guest inquiry session.
  *
  * The access token is returned in the JSON body *and* mirrored into an
  * httpOnly cookie: browser clients ride on the cookie (no token in JS memory,
@@ -59,7 +59,7 @@ export function clearAuthCookies(res: Response): void {
   res.clearCookie(REFRESH_TOKEN_COOKIE, options);
 }
 
-/** 30 days — matches the guest cart TTL on the Cart model. */
+/** 30 days — matches the guest TTL on the InquiryList model. */
 export function setSessionCookie(res: Response, sessionId: string): void {
   res.cookie(SESSION_ID_COOKIE, sessionId, baseOptions(30 * 86_400_000));
 }

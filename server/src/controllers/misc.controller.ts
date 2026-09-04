@@ -49,9 +49,32 @@ export async function subscribeNewsletter(req: Request, res: Response): Promise<
 }
 
 /** Public storefront configuration. Bank details are admin-only. */
+/**
+ * Public site settings.
+ *
+ * A **whitelist**, for the same reason `toPublicProduct` is one: `-bankDetails`
+ * shipped every future field by default, so the day somebody added a margin or
+ * a supplier note to Settings it would have gone straight to the browser. Only
+ * what the storefront actually renders is listed.
+ */
+const PUBLIC_SETTING_FIELDS = [
+  'key',
+  'siteName',
+  'tagline',
+  'email',
+  'phone',
+  'whatsapp',
+  'address',
+  'mapEmbedUrl',
+  'social',
+  'businessHours',
+  'announcement',
+  'seo',
+].join(' ');
+
 export async function getSettings(_req: Request, res: Response): Promise<void> {
   const settings = await Setting.findOne({ key: 'global' })
-    .select('-bankDetails -__v')
+    .select(PUBLIC_SETTING_FIELDS)
     .lean();
 
   sendSuccess(res, settings, settings ? 'Site settings' : 'Settings have not been configured yet');

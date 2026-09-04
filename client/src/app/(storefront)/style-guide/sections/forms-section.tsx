@@ -5,7 +5,7 @@ import { Search } from 'lucide-react';
 import { Checkbox, RadioGroup, RadioGroupItem, Switch } from '@/components/ui/checkbox';
 import { Field, Label } from '@/components/ui/label';
 import { Input, Textarea } from '@/components/ui/input';
-import { PriceRangeSlider } from '@/components/ui/slider';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -16,7 +16,7 @@ import {
 import { SectionHeading } from '@/components/ui/separator';
 
 export function FormsSection(): JSX.Element {
-  const [range, setRange] = useState<[number, number]>([5000, 90000]);
+  const [range, setRange] = useState<[number, number]>([10, 250]);
   const [poles, setPoles] = useState('3p');
 
   return (
@@ -116,7 +116,7 @@ export function FormsSection(): JSX.Element {
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="sg-sw2" className="font-normal">
-                  Email me price changes
+                  Email me when new stock arrives
                 </Label>
                 <Switch id="sg-sw2" />
               </div>
@@ -125,9 +125,11 @@ export function FormsSection(): JSX.Element {
 
           <div>
             <p className="mb-3 text-2xs font-bold uppercase tracking-wide text-muted-foreground">
-              Price range
+              Quantity range
             </p>
-            <PriceRangeSlider min={0} max={200000} value={range} onValueChange={setRange} />
+            {/* A plain range slider. The price version went with the pivot —
+                nothing on this site is priced, so it had nothing to filter. */}
+            <Slider min={0} max={500} value={range} onValueChange={(next) => setRange(next as [number, number])} />
           </div>
         </div>
       </div>

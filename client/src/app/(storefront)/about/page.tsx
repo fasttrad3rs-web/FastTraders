@@ -122,7 +122,7 @@ export default async function AboutPage(): Promise<JSX.Element> {
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Button asChild variant="cta" size="lg">
-            <Link href="/request-quote">Request a quote</Link>
+            <Link href="/submit-inquiry">Request a quote</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
             <Link href="/contact">Contact us</Link>

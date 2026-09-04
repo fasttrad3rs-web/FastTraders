@@ -3,19 +3,28 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/feedback';
-import { formatDate, formatPKR } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 
 /**
- * Recent activity: latest orders and quotations side by side.
+ * Recent activity: inquiries, contact enquiries and testimonials.
+ *
+ * Orders went with the commerce model. What replaces them is the two inboxes
+ * that actually need answering — an unanswered inquiry and an unanswered
+ * contact form are both lost business.
  *
  * The `/admin/dashboard/recent` endpoint returns loosely typed collections, so
  * each row is read through narrow accessors rather than casting the payload.
+ * That looseness is why this panel silently rendered empty for a while: it
+ * read `data.quotations` long after the API had started returning `inquiries`,
+ * and no type existed to catch it.
  */
 
 type Row = Record<string, unknown>;
 
 const str = (row: Row, key: string): string => (typeof row[key] === 'string' ? (row[key] as string) : '');
-const num = (row: Row, key: string): number => (typeof row[key] === 'number' ? (row[key] as number) : 0);
+const bool = (row: Row, key: string): boolean => row[key] === true;
+const rowId = (row: Row): string => str(row, '_id') || str(row, 'id');
+
 const customerName = (row: Row): string => {
   const customer = row.customer;
   if (customer && typeof customer === 'object' && 'name' in customer) {
@@ -26,34 +35,41 @@ const customerName = (row: Row): string => {
 };
 
 export function RecentActivity({ data }: { data?: Record<string, unknown[]> }): JSX.Element {
-  const orders = (data?.orders ?? []) as Row[];
-  const quotations = (data?.quotations ?? []) as Row[];
+  const inquiries = (data?.inquiries ?? []) as Row[];
+  const contacts = (data?.contacts ?? []) as Row[];
+  const testimonials = (data?.testimonials ?? []) as Row[];
 
   return (
     <div className="mt-6 grid gap-4 lg:grid-cols-2">
-      <Panel title="Recent orders" href="/admin/orders" loading={!data}>
-        {orders.length === 0 ? (
-          <Empty label="No orders yet." />
+      <Panel title="Recent inquiries" href="/admin/inquiries" loading={!data}>
+        {inquiries.length === 0 ? (
+          <Empty label="No inquiries yet." />
         ) : (
           <ul className="divide-y divide-border">
-            {orders.slice(0, 6).map((order) => (
-              <li key={str(order, 'orderNumber')} className="flex items-center justify-between gap-3 py-2.5">
+            {inquiries.slice(0, 6).map((inquiry) => (
+              <li
+                key={str(inquiry, 'inquiryNumber')}
+                className="flex items-center justify-between gap-3 py-2.5"
+              >
                 <div className="min-w-0">
                   <Link
-                    href={`/admin/orders/${str(order, '_id') || str(order, 'id')}`}
+                    href={`/admin/inquiries/${rowId(inquiry)}`}
                     className="font-mono text-xs font-semibold text-brand-navy hover:text-brand-cyan"
                   >
-                    {str(order, 'orderNumber')}
+                    {str(inquiry, 'inquiryNumber')}
                   </Link>
                   <p className="truncate text-2xs text-muted-foreground">
-                    {customerName(order)} · {formatDate(str(order, 'createdAt'))}
+                    {customerName(inquiry)} · {formatDate(str(inquiry, 'createdAt'))}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant="muted">{str(order, 'orderStatus')}</Badge>
-                  <span className="text-xs font-semibold tabular-nums">
-                    {formatPKR(num(order, 'total'))}
-                  </span>
+                  {/* No money on this row: the quote happens on the phone. */}
+                  <Badge variant={str(inquiry, 'priority') === 'urgent' ? 'warning' : 'muted'}>
+                    {str(inquiry, 'type') === 'sourcing_request' ? 'sourcing' : 'product'}
+                  </Badge>
+                  <Badge variant={str(inquiry, 'status') === 'new' ? 'accent' : 'muted'}>
+                    {str(inquiry, 'status')}
+                  </Badge>
                 </div>
               </li>
             ))}
@@ -61,32 +77,59 @@ export function RecentActivity({ data }: { data?: Record<string, unknown[]> }): 
         )}
       </Panel>
 
-      <Panel title="Recent quotations" href="/admin/quotations" loading={!data}>
-        {quotations.length === 0 ? (
-          <Empty label="No quotation requests yet." />
+      <Panel title="Recent contact enquiries" href="/admin/contacts" loading={!data}>
+        {contacts.length === 0 ? (
+          <Empty label="No contact enquiries yet." />
         ) : (
           <ul className="divide-y divide-border">
-            {quotations.slice(0, 6).map((quote) => (
-              <li key={str(quote, 'quoteNumber')} className="flex items-center justify-between gap-3 py-2.5">
+            {contacts.slice(0, 6).map((contact) => (
+              <li
+                key={rowId(contact) || str(contact, 'email')}
+                className="flex items-center justify-between gap-3 py-2.5"
+              >
                 <div className="min-w-0">
                   <Link
-                    href={`/admin/quotations/${str(quote, '_id') || str(quote, 'id')}`}
-                    className="font-mono text-xs font-semibold text-brand-navy hover:text-brand-cyan"
+                    href="/admin/contacts"
+                    className="block truncate text-xs font-semibold text-brand-navy hover:text-brand-cyan"
                   >
-                    {str(quote, 'quoteNumber')}
+                    {str(contact, 'subject') || str(contact, 'name') || 'Enquiry'}
                   </Link>
                   <p className="truncate text-2xs text-muted-foreground">
-                    {customerName(quote)} · {formatDate(str(quote, 'createdAt'))}
+                    {str(contact, 'name')} · {formatDate(str(contact, 'createdAt'))}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant={str(quote, 'status') === 'new' ? 'accent' : 'muted'}>
-                    {str(quote, 'status')}
-                  </Badge>
-                  <span className="text-xs font-semibold tabular-nums">
-                    {num(quote, 'quotedTotal') > 0 ? formatPKR(num(quote, 'quotedTotal')) : '—'}
+                <Badge variant={str(contact, 'status') === 'new' ? 'accent' : 'muted'}>
+                  {str(contact, 'status')}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      <Panel
+        title="Latest testimonials"
+        href="/admin/testimonials"
+        loading={!data}
+        className="lg:col-span-2"
+      >
+        {testimonials.length === 0 ? (
+          <Empty label="No testimonials captured yet." />
+        ) : (
+          <ul className="divide-y divide-border">
+            {testimonials.slice(0, 5).map((item) => (
+              <li key={rowId(item)} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <span className="block truncate text-xs font-semibold text-brand-navy">
+                    {str(item, 'author')}
                   </span>
+                  <p className="truncate text-2xs text-muted-foreground">
+                    {str(item, 'company') || '—'} · {formatDate(str(item, 'createdAt'))}
+                  </p>
                 </div>
+                <Badge variant={bool(item, 'isPublished') ? 'success' : 'warning'}>
+                  {bool(item, 'isPublished') ? 'Published' : 'Draft'}
+                </Badge>
               </li>
             ))}
           </ul>
@@ -100,17 +143,21 @@ function Panel({
   title,
   href,
   loading,
+  className,
   children,
 }: {
   title: string;
   href: string;
   loading: boolean;
+  className?: string;
   children: React.ReactNode;
 }): JSX.Element {
   return (
-    <section className="rounded-lg border border-border bg-white p-5">
+    <section className={cn('rounded-lg border border-border bg-white p-5', className)}>
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-brand-navy">{title}</h2>
+        <h2 className="font-heading text-sm font-bold uppercase tracking-wide text-brand-navy">
+          {title}
+        </h2>
         <Link href={href} className="text-xs font-medium text-brand-cyan hover:underline">
           View all
         </Link>

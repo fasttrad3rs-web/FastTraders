@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Pagination } from '@/components/ui/pagination';
 import { EmptyState, ErrorState, ProductCardSkeleton } from '@/components/ui/feedback';
 import { ProductCard } from '@/components/product/product-card';
+import { SourcingCTA } from '@/components/shared';
 import { useProducts } from '@/lib/api/queries';
 import type { CategoryNode, ProductFacets, ProductListResponse } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 import { FilterSidebar } from './filter-sidebar';
-import { useCatalogFilters, type LayoutMode } from './use-catalog-filters';
+import { SORTS, SORT_LABELS, type LayoutMode } from './filters';
+import { useCatalogFilters } from './use-catalog-filters';
 
 /**
  * Interactive catalogue.
@@ -85,11 +87,12 @@ export function CatalogView({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Newest first</SelectItem>
-                <SelectItem value="popular">Best selling</SelectItem>
-                <SelectItem value="price_asc">Price: low to high</SelectItem>
-                <SelectItem value="price_desc">Price: high to low</SelectItem>
-                <SelectItem value="name">Name A–Z</SelectItem>
+                {/* Driven by the same list the API validates against. */}
+                {SORTS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {SORT_LABELS[option]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -121,17 +124,22 @@ export function CatalogView({
         ) : isPending && !result ? (
           <ProductSkeletonGrid />
         ) : products.length === 0 ? (
-          <EmptyState
-            title="No products match those filters"
-            description="Try widening the price range, clearing a brand, or searching by part number instead."
-            action={
-              api.activeCount > 0 ? (
-                <Button variant="outline" size="sm" onClick={api.clearAll}>
-                  Clear all filters
-                </Button>
-              ) : null
-            }
-          />
+          <div className="space-y-6">
+            <EmptyState
+              title="No products match those filters"
+              description="Try clearing a brand or availability filter, or search by part number instead."
+              action={
+                api.activeCount > 0 ? (
+                  <Button variant="outline" size="sm" onClick={api.clearAll}>
+                    Clear all filters
+                  </Button>
+                ) : null
+              }
+            />
+
+            {/* The empty result is the moment a buyer decides we cannot help. */}
+            <SourcingCTA variant="panel" />
+          </div>
         ) : (
           <ul
             className={cn(

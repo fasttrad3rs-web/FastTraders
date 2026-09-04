@@ -1,10 +1,18 @@
 import Link from 'next/link';
+import { BrandLogo } from '@/components/shared/brand-logo';
 import { mockBrands } from '@/lib/mock-data';
 
 /**
  * Authorised-brand strip.
- * Grayscale until hover — the client's authorisations are a trust signal, and
- * twelve full-colour logos at once would fight the navy footer.
+ *
+ * Real logos on white tiles, not text. Being an authorised stockist for
+ * Terasaki and Mitsubishi is one of the strongest trust signals this business
+ * has, and a panel builder recognises those marks instantly in a way they
+ * never would from the name set in our own typeface.
+ *
+ * The tiles are white because most of these logos are dark ink — see
+ * `BrandLogo`. Muted at rest and full strength on hover, so twelve marks do
+ * not shout over the footer content above them.
  */
 export function BrandStrip(): JSX.Element {
   return (
@@ -19,9 +27,9 @@ export function BrandStrip(): JSX.Element {
             <Link
               href={`/brands/${brand.slug}`}
               title={`${brand.name} — ${brand.country}`}
-              className="group flex h-14 items-center justify-center rounded-lg border border-white/10 bg-white/5 px-2 text-center text-[11px] font-bold uppercase tracking-wide text-white/45 grayscale transition-all hover:border-brand-cyan/50 hover:bg-white/10 hover:text-brand-cyan hover:grayscale-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cyan"
+              className="group flex h-14 items-center justify-center rounded-lg border border-white/10 opacity-80 transition-all hover:border-brand-cyan/50 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cyan"
             >
-              {brand.name}
+              <BrandLogo slug={brand.slug} name={brand.name} sizes="(max-width: 640px) 30vw, 140px" />
             </Link>
           </li>
         ))}

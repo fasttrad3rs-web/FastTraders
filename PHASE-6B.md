@@ -1,5 +1,10 @@
 # Phase 6B — Transaction and account pages
 
+> **Superseded.** This document describes the site before the catalogue-only
+> pivot — it still refers to prices, carts, checkout, payments, orders or
+> customer accounts, none of which exist any more. Kept as build history.
+> See [`CATALOG-PIVOT.md`](./CATALOG-PIVOT.md) for the current model.
+
 44 new files, 27 new routes. Phase 6 is complete: **33 routes** total.
 
 | Group | Routes |

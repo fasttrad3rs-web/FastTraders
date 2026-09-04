@@ -20,10 +20,9 @@ export interface FacetBucket {
 export interface ProductFacets {
   categories: FacetBucket[];
   brands: FacetBucket[];
-  pricingModes: FacetBucket[];
-  stockStatus: FacetBucket[];
+  /** Ready / on order / imported / discontinued — replaced the price slider. */
+  availability: FacetBucket[];
   specs: { key: string; values: FacetBucket[] }[];
-  priceRange: { min: number; max: number } | null;
 }
 
 const MAX_SPEC_KEYS = 8;
@@ -44,12 +43,11 @@ export async function buildFacets(
   refs: ResolvedRefs,
 ): Promise<ProductFacets> {
   // Shared prefix: everything except the four facetable dimensions.
-  const base = buildProductFilter(query, refs, ['category', 'brand', 'price', 'stock']);
+  const base = buildProductFilter(query, refs, ['category', 'brand', 'availability']);
 
   const withoutBrand = buildProductFilter(query, refs, ['brand']);
   const withoutCategory = buildProductFilter(query, refs, ['category']);
-  const withoutPrice = buildProductFilter(query, refs, ['price']);
-  const withoutStock = buildProductFilter(query, refs, ['stock']);
+  const withoutAvailability = buildProductFilter(query, refs, ['availability']);
 
   const pipeline: PipelineStage[] = [
     { $match: base },
@@ -60,14 +58,9 @@ export async function buildFacets(
           { $match: withoutCategory },
           { $group: { _id: '$subCategory', count: { $sum: 1 } } },
         ],
-        pricingModes: [
-          { $match: withoutBrand },
-          { $group: { _id: '$pricingMode', count: { $sum: 1 } } },
-        ],
-        stockStatus: [{ $match: withoutStock }, { $group: { _id: '$stockStatus', count: { $sum: 1 } } }],
-        priceRange: [
-          { $match: { ...withoutPrice, price: { $exists: true, $gt: 0 } } },
-          { $group: { _id: null, min: { $min: '$price' }, max: { $max: '$price' } } },
+        availability: [
+          { $match: withoutAvailability },
+          { $group: { _id: '$availability', count: { $sum: 1 } } },
         ],
         specs: [
           { $match: withoutBrand },
@@ -88,14 +81,12 @@ export async function buildFacets(
   const [raw] = await Product.aggregate<{
     brands: IdCount[];
     categories: IdCount[];
-    pricingModes: IdCount[];
-    stockStatus: IdCount[];
-    priceRange: { min: number; max: number }[];
+    availability: IdCount[];
     specs: SpecRow[];
   }>(pipeline);
 
   if (!raw) {
-    return { categories: [], brands: [], pricingModes: [], stockStatus: [], specs: [], priceRange: null };
+    return { categories: [], brands: [], availability: [], specs: [] };
   }
 
   const [brandLabels, categoryLabels] = await Promise.all([
@@ -106,28 +97,23 @@ export async function buildFacets(
   return {
     brands: toBuckets(raw.brands, brandLabels),
     categories: toBuckets(raw.categories, categoryLabels),
-    pricingModes: raw.pricingModes
+    availability: raw.availability
       .filter((row): row is IdCount & { _id: string } => typeof row._id === 'string')
-      .map((row) => ({ value: row._id, label: PRICING_LABELS[row._id] ?? row._id, count: row.count })),
-    stockStatus: raw.stockStatus
-      .filter((row): row is IdCount & { _id: string } => typeof row._id === 'string')
-      .map((row) => ({ value: row._id, label: STOCK_LABELS[row._id] ?? row._id, count: row.count })),
+      .map((row) => ({
+        value: row._id,
+        label: AVAILABILITY_LABELS[row._id] ?? row._id,
+        count: row.count,
+      })),
     specs: groupSpecs(raw.specs),
-    priceRange: raw.priceRange[0] ?? null,
   };
 }
 
-const PRICING_LABELS: Record<string, string> = {
-  retail: 'Buy online',
-  quote: 'Request a quote',
-  both: 'Buy or request a quote',
-};
-
-const STOCK_LABELS: Record<string, string> = {
-  in_stock: 'In stock',
-  low_stock: 'Low stock',
-  out_of_stock: 'Out of stock',
-  on_order: 'On order',
+/** Buyer-facing wording. "available_on_order" means nothing to a customer. */
+const AVAILABILITY_LABELS: Record<string, string> = {
+  ready_stock: 'Ready stock',
+  available_on_order: 'Available on order',
+  import_on_request: 'Imported on request',
+  discontinued: 'Discontinued',
 };
 
 interface LabelRow {

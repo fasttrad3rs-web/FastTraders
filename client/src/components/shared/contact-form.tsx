@@ -11,6 +11,8 @@ import { Input, Textarea } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { apiClient } from '@/lib/api-client';
 import { contactSchema } from '@/lib/forms';
+import { useFormToken } from '@/hooks/use-form-token';
+import { HoneypotField } from '@/components/shared/honeypot-field';
 
 type ContactInput = z.infer<typeof contactSchema>;
 
@@ -26,10 +28,16 @@ export function ContactForm(): JSX.Element {
     formState: { errors, isSubmitting },
   } = useForm<ContactInput>({ resolver: zodResolver(contactSchema) });
 
+  const formToken = useFormToken();
+
   const onSubmit = handleSubmit(async (values) => {
     setError(null);
     try {
-      await apiClient.post('/contact', { ...values, source: 'contact_form' });
+      await apiClient.post('/contact', {
+        ...values,
+        ...(formToken() ? { formToken: formToken() } : {}),
+        source: 'contact_form',
+      });
       reset();
       setSent(true);
     } catch (caught) {
@@ -70,11 +78,7 @@ export function ContactForm(): JSX.Element {
         <Textarea id="ct-message" rows={5} {...register('message')} hasError={Boolean(errors.message)} />
       </Field>
 
-      {/* Honeypot: hidden from people, irresistible to bots. */}
-      <div aria-hidden className="absolute -left-[9999px]">
-        <label htmlFor="ct-website">Leave this empty</label>
-        <input id="ct-website" tabIndex={-1} autoComplete="off" {...register('website')} />
-      </div>
+      <HoneypotField id="ct-website" registration={register('website')} />
 
       <Button type="submit" variant="cta" size="lg" isLoading={isSubmitting} loadingText="Sending…">
         <Send />

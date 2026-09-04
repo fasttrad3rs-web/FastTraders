@@ -31,7 +31,7 @@ export default function NotFound(): JSX.Element {
           </Link>
         </Button>
         <Button asChild variant="outline">
-          <Link href="/request-quote">Request a quote</Link>
+          <Link href="/submit-inquiry">Request a quote</Link>
         </Button>
       </div>
 
@@ -43,7 +43,7 @@ export default function NotFound(): JSX.Element {
           {mockCategories.slice(0, 6).map((category) => (
             <li key={category.slug}>
               <Link
-                href={`/category/${category.slug}`}
+                href={`/categories/${category.slug}`}
                 className="inline-flex rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-brand-navy transition-colors hover:border-brand-cyan hover:text-brand-cyan"
               >
                 {category.name}

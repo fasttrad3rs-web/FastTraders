@@ -11,7 +11,7 @@ import { NewsletterSignup } from './newsletter';
 const QUICK_LINKS = [
   { label: 'All Products', href: '/products' },
   { label: 'Brands', href: '/brands' },
-  { label: 'Request a Quote', href: '/request-quote' },
+  { label: 'Request a Quote', href: '/submit-inquiry' },
   { label: 'Track an Order', href: '/orders/track' },
   { label: 'About Us', href: '/about' },
   { label: 'Contact', href: '/contact' },
@@ -41,7 +41,7 @@ export function Footer(): JSX.Element {
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           {/* 1 — identity */}
           <div>
-            <Logo variant="light" />
+            <Logo variant="light" lockup="stacked" height={92} />
             <p className="mt-4 text-sm leading-relaxed text-white/60">
               {SITE.tagline}. Supplying switchgear, automation and control components to industry
               across Pakistan from our counter on Bull Road, Lahore.
@@ -84,7 +84,7 @@ export function Footer(): JSX.Element {
               {mockCategories.slice(0, 6).map((category) => (
                 <li key={category.slug}>
                   <Link
-                    href={`/category/${category.slug}`}
+                    href={`/categories/${category.slug}`}
                     className="text-sm text-white/60 transition-colors hover:text-brand-cyan"
                   >
                     {category.name}
@@ -143,7 +143,18 @@ export function Footer(): JSX.Element {
         <div className="container flex flex-col items-center justify-between gap-3 py-5 text-xs text-white/50 sm:flex-row">
           <p>© {new Date().getFullYear()} Fast Traders. All rights reserved.</p>
           <div className="flex items-center gap-5">
-            <Link href="/privacy" className="transition-colors hover:text-brand-cyan">
+            {/*
+              These four pages existed and were built, but only Terms was ever
+              linked — so the privacy policy was unreachable, which Google
+              Business Profile and Search Console both look for.
+            */}
+            <Link href="/faq" className="transition-colors hover:text-brand-cyan">
+              FAQ
+            </Link>
+            <Link href="/shipping-returns" className="transition-colors hover:text-brand-cyan">
+              Delivery &amp; returns
+            </Link>
+            <Link href="/privacy-policy" className="transition-colors hover:text-brand-cyan">
               Privacy
             </Link>
             <Link href="/terms" className="transition-colors hover:text-brand-cyan">

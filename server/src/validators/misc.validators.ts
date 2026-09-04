@@ -34,34 +34,38 @@ export const bannerQuerySchema = z.object({
   position: z.enum(['hero', 'strip', 'sidebar']).optional(),
 });
 
-/* -------------------------------- Reviews -------------------------------- */
+/* ----------------------------- Testimonials ------------------------------ */
 
-export const createReviewSchema = z.object({
-  product: objectIdSchema,
-  rating: z.coerce.number().int().min(1).max(5),
-  title: z.string().trim().max(120).optional(),
-  comment: z.string().trim().min(10, 'Please write at least 10 characters').max(2000),
-  images: z.array(z.string().url()).max(4).default([]),
+export const createTestimonialSchema = z.object({
+  quote: z.string().trim().min(10, 'Quote is too short').max(1000),
+  author: z.string().trim().min(2).max(120),
+  role: z.string().trim().max(120).optional(),
+  company: z.string().trim().max(160).optional(),
+  product: objectIdSchema.nullable().optional(),
+  rating: z.coerce.number().int().min(1).max(5).optional(),
+  isPublished: z.boolean().default(false),
+  displayOrder: z.coerce.number().int().nonnegative().default(0),
 });
-export type CreateReviewInput = z.infer<typeof createReviewSchema>;
+export type CreateTestimonialInput = z.infer<typeof createTestimonialSchema>;
 
-export const updateReviewSchema = z
+/*
+ * Explicit, not `.partial()`. See `updateBrandSchema` — optional-but-not-
+ * nullable means the admin can set a role or a rating and never remove one.
+ */
+export const updateTestimonialSchema = z
   .object({
-    rating: z.coerce.number().int().min(1).max(5).optional(),
-    title: z.string().trim().max(120).optional(),
-    comment: z.string().trim().min(10).max(2000).optional(),
-    images: z.array(z.string().url()).max(4).optional(),
+    quote: z.string().trim().min(10, 'Quote is too short').max(1000).optional(),
+    author: z.string().trim().min(2).max(120).optional(),
+    role: z.string().trim().max(120).nullable().optional(),
+    company: z.string().trim().max(160).nullable().optional(),
+    product: objectIdSchema.nullable().optional(),
+    rating: z.coerce.number().int().min(1).max(5).nullable().optional(),
+    isPublished: z.boolean().optional(),
+    displayOrder: z.coerce.number().int().nonnegative().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, 'Provide at least one field to update');
-export type UpdateReviewInput = z.infer<typeof updateReviewSchema>;
 
-export const approveReviewSchema = z.object({
-  isApproved: z.boolean(),
-});
-
-export const reviewQuerySchema = paginationSchema.extend({
+export const testimonialQuerySchema = paginationSchema.extend({
   product: objectIdSchema.optional(),
-  /** Admin-only: include reviews awaiting moderation. */
-  includePending: booleanQuerySchema.default(false),
-  sort: z.enum(['newest', 'highest', 'lowest']).default('newest'),
+  isPublished: booleanQuerySchema.optional(),
 });

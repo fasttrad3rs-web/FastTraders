@@ -13,7 +13,7 @@ export {
   SelectLabel,
 } from './select';
 export { Checkbox, RadioGroup, RadioGroupItem, Switch } from './checkbox';
-export { Slider, PriceRangeSlider } from './slider';
+export { Slider } from './slider';
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './card';
 export { Badge, badgeVariants, Chip, StockBadge, type BadgeProps } from './badge';
 export { Avatar, AvatarImage, AvatarFallback, initialsOf } from './avatar';
@@ -73,6 +73,6 @@ export {
   EmptyState,
   ErrorState,
 } from './feedback';
-export { Rating, QuantityStepper, PriceDisplay } from './commerce';
+export { Rating, QuantityStepper, AvailabilityNote } from './commerce';
 export { Toaster, toast } from './toast';
 export { Separator, SectionHeading } from './separator';

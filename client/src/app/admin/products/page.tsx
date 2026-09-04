@@ -121,18 +121,21 @@ export default function AdminProductsPage(): JSX.Element {
           </SelectContent>
         </Select>
 
+        {/* `availability`, not the old `madeToOrder` — anything else is
+            stripped by the admin query validator and filters nothing. */}
         <Select
-          value={String(filters.pricingMode ?? 'all')}
-          onValueChange={(value) => setFilter('pricingMode', value)}
+          value={String(filters.availability ?? 'all')}
+          onValueChange={(value) => setFilter('availability', value)}
         >
-          <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by pricing mode">
-            <SelectValue placeholder="Pricing" />
+          <SelectTrigger className="h-9 w-[170px]" aria-label="Filter by availability">
+            <SelectValue placeholder="Availability" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All pricing</SelectItem>
-            <SelectItem value="retail">Retail</SelectItem>
-            <SelectItem value="quote">Quote only</SelectItem>
-            <SelectItem value="both">Both</SelectItem>
+            <SelectItem value="all">All products</SelectItem>
+            <SelectItem value="ready_stock">Ready stock</SelectItem>
+            <SelectItem value="available_on_order">Available on order</SelectItem>
+            <SelectItem value="import_on_request">Imported on request</SelectItem>
+            <SelectItem value="discontinued">Discontinued</SelectItem>
           </SelectContent>
         </Select>
 
@@ -164,7 +167,6 @@ export default function AdminProductsPage(): JSX.Element {
           <SelectContent>
             <SelectItem value="newest">Newest</SelectItem>
             <SelectItem value="name">Name A–Z</SelectItem>
-            <SelectItem value="price_desc">Price high–low</SelectItem>
             <SelectItem value="stock_asc">Stock low–high</SelectItem>
             <SelectItem value="sales">Best selling</SelectItem>
           </SelectContent>
@@ -215,7 +217,7 @@ export default function AdminProductsPage(): JSX.Element {
         open={bulkAction !== null}
         onOpenChange={(open) => !open && setBulkAction(null)}
         title={`Deactivate ${selected.length} product(s)?`}
-        description="They will be hidden from the storefront. This is a soft delete — order history and existing links keep working."
+        description="They will be hidden from the storefront. This is a soft delete — existing links keep working, and any inquiry that mentions them still shows the item."
         confirmLabel="Deactivate all"
         destructive
         isLoading={mutations.bulk.isPending}

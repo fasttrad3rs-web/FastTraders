@@ -1,32 +1,36 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, ShoppingCart } from 'lucide-react';
+import { FileText, MessageCircle, PhoneCall } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StockBadge } from '@/components/ui/badge';
-import { PriceDisplay, QuantityStepper, Rating } from '@/components/ui/commerce';
+import { Badge } from '@/components/ui/badge';
+import { AvailabilityBadge } from '@/components/shared';
+import { AvailabilityNote, QuantityStepper, Rating } from '@/components/ui/commerce';
 import { SectionHeading } from '@/components/ui/separator';
 import { mockProducts } from '@/lib/mock-data';
 
 /**
- * Commerce primitives, shown against the three pricing modes so the hybrid
- * model is visible at a glance.
+ * Catalogue primitives.
+ *
+ * Fast Traders publishes no prices, so the slot where a price would sit
+ * carries the call to action instead. Every product routes to a phone call,
+ * WhatsApp, or the enquiry list.
  */
 export function CommerceSection(): JSX.Element {
   const [qty, setQty] = useState(2);
   const [rollQty, setRollQty] = useState(1);
 
   const samples = [
-    { label: 'retail — priced, buyable', product: mockProducts[2] },
-    { label: 'both — priced + bulk quote', product: mockProducts[0] },
-    { label: 'quote — price hidden', product: mockProducts[1] },
+    { label: 'stocked item', product: mockProducts[2] },
+    { label: 'sourced to order', product: mockProducts[1] },
+    { label: 'low stock', product: mockProducts[0] },
   ];
 
   return (
     <section id="commerce" className="scroll-mt-24">
       <SectionHeading
-        title="Commerce primitives"
-        description="PriceDisplay adapts to pricingMode: a quote-only product shows the call to action, never an empty price."
+        title="Catalogue primitives"
+        description="No prices anywhere. AvailabilityNote fills the price slot with the next step."
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -41,32 +45,22 @@ export function CommerceSection(): JSX.Element {
               </p>
 
               <div className="mt-3 flex items-center gap-3">
-                <Rating value={product.ratingAvg} count={product.reviewCount} size="sm" />
-                <StockBadge status={product.stockStatus} />
+                <AvailabilityBadge value={product.availability} size="sm" />
               </div>
 
               <div className="mt-4">
-                <PriceDisplay
-                  price={product.price}
-                  comparePrice={product.comparePrice}
-                  pricingMode={product.pricingMode}
-                  unit={product.unit}
-                />
+                <AvailabilityNote isMadeToOrder={product.isMadeToOrder} size="sm" />
               </div>
 
               <div className="mt-auto space-y-2 pt-5">
-                {product.pricingMode !== 'quote' ? (
-                  <Button variant="cta" block>
-                    <ShoppingCart />
-                    Add to cart
-                  </Button>
-                ) : null}
-                {product.pricingMode !== 'retail' ? (
-                  <Button variant={product.pricingMode === 'quote' ? 'cta' : 'outline'} block>
-                    <FileText />
-                    {product.pricingMode === 'quote' ? 'Request quote' : 'Bulk / trade price?'}
-                  </Button>
-                ) : null}
+                <Button variant="cta" block className="bg-[#25D366] hover:bg-[#1da851]">
+                  <MessageCircle />
+                  Ask on WhatsApp
+                </Button>
+                <Button variant="outline" block>
+                  <FileText />
+                  Add to enquiry list
+                </Button>
               </div>
             </div>
           ) : null,
@@ -80,28 +74,34 @@ export function CommerceSection(): JSX.Element {
           </p>
           <div className="flex flex-wrap items-center gap-4">
             <QuantityStepper value={qty} onChange={setQty} min={1} max={40} />
-            <QuantityStepper value={rollQty} onChange={setRollQty} min={1} max={18} unit="rolls" />
+            <QuantityStepper value={rollQty} onChange={setRollQty} min={1} unit="rolls" />
             <QuantityStepper value={1} onChange={() => undefined} disabled />
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Respects `minOrderQty` and available stock; typing is allowed and clamped.
+            Quantity is an indication of interest on an enquiry, not an order line.
           </p>
         </div>
 
         <div>
           <p className="mb-3 text-2xs font-bold uppercase tracking-wide text-muted-foreground">
-            Ratings &amp; PKR formatting
+            Availability &amp; ratings
           </p>
-          <div className="space-y-3">
-            <Rating value={4.6} count={12} />
-            <Rating value={3.2} count={5} size="sm" />
-            <Rating value={5} />
-            <div className="flex flex-wrap items-baseline gap-6 pt-2">
-              <PriceDisplay price={12500} pricingMode="retail" size="sm" />
-              <PriceDisplay price={38500} comparePrice={44000} pricingMode="both" />
-              <PriceDisplay price={1915420} pricingMode="retail" size="lg" />
+          <div className="space-y-4">
+            <AvailabilityNote />
+            <AvailabilityNote isMadeToOrder size="lg" />
+            {/*
+              Rating survives as a primitive for admin-entered testimonials.
+              It no longer appears on product cards — nothing aggregates
+              verified buyer reviews now that there are no customer accounts.
+            */}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <Rating value={4.6} count={12} />
+              <Badge variant="outline">Sourced to order</Badge>
             </div>
-            <PriceDisplay pricingMode="quote" />
+            <Button variant="primary" size="sm">
+              <PhoneCall />
+              Call +92 324 4234990
+            </Button>
           </div>
         </div>
       </div>

@@ -1,5 +1,10 @@
 # Phase 7A — Admin shell, dashboard, products, orders
 
+> **Superseded.** This document describes the site before the catalogue-only
+> pivot — it still refers to prices, carts, checkout, payments, orders or
+> customer accounts, none of which exist any more. Kept as build history.
+> See [`CATALOG-PIVOT.md`](./CATALOG-PIVOT.md) for the current model.
+
 23 files. Six admin routes live; the remaining thirteen land in 7B.
 
 | Route | What it does |

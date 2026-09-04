@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" width="1280" height="800" role="img" aria-label="Industrial switchgear">
+  <!--
+    16:10 to match the hero slot, which is `aspect-[16/10]` with `object-cover`
+    — a 1920x720 panel had its sides cropped away.
+
+    No headline text: the slide already renders the title and subtitle beside
+    this panel, and repeating them read as a duplicate.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F1B4C"/>
+      <stop offset="1" stop-color="#1B2A6B"/>
+    </linearGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0v64" fill="none" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="800" fill="url(#bg)"/>
+  <rect width="1280" height="800" fill="url(#grid)"/>
+
+  <!-- Three breakers on a rail, centred in the panel. -->
+  <g fill="none" stroke="#00AEEF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+    <g transform="translate(430 250)">
+      <rect x="0" y="0" width="120" height="240" rx="12"/>
+      <path d="M60 46v58M36 128h48M60 146v52"/>
+      <rect x="30" y="214" width="60" height="14" rx="4"/>
+    </g>
+    <g transform="translate(580 250)">
+      <rect x="0" y="0" width="120" height="240" rx="12"/>
+      <path d="M60 46v58M36 128h48M60 146v52"/>
+      <rect x="30" y="214" width="60" height="14" rx="4"/>
+    </g>
+    <g transform="translate(730 250)">
+      <rect x="0" y="0" width="120" height="240" rx="12"/>
+      <path d="M60 46v58M36 128h48M60 146v52"/>
+      <rect x="30" y="214" width="60" height="14" rx="4"/>
+    </g>
+    <path d="M380 540h520" stroke-width="7"/>
+  </g>
+
+</svg>

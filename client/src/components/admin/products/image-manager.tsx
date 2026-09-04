@@ -7,6 +7,7 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import { apiClient, unwrap } from '@/lib/api-client';
+import { imageProps } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import type { Product, ProductImage } from '@/types';
 
@@ -134,7 +135,13 @@ export function ProductImageManager({ product }: { product?: Product }): JSX.Ele
               )}
             >
               <div className="relative aspect-square">
-                <Image src={image.url} alt={image.alt} fill sizes="200px" className="object-contain" />
+                <Image
+                  {...imageProps(image.url)}
+                  alt={image.alt}
+                  fill
+                  sizes="200px"
+                  className="object-contain"
+                />
               </div>
 
               {index === 0 ? (

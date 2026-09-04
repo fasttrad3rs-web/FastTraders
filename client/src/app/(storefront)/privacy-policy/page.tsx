@@ -17,38 +17,37 @@ export default function PrivacyPolicyPage(): JSX.Element {
         {
           heading: 'What we collect',
           body: [
-            'When you place an order or request a quotation we collect your name, email address, phone number, delivery address and, if you provide them, your company name and NTN.',
-            'If you create an account we also store a hashed version of your password. We never store the password itself, and we cannot recover it.',
-            'We record which products you view and add to your cart so the site can show your recently viewed items and keep your cart between visits.',
+            'When you send an inquiry or a China sourcing request we collect your name and phone number, and — only if you give them — your WhatsApp number, email address, company, city and role.',
+            'There are no customer accounts on this site, so there is no password to store and nothing to sign in to.',
+            'Your inquiry list is kept in your own browser. We only receive it at the moment you press send.',
           ],
         },
         {
           heading: 'How we use it',
           body: [
-            'To fulfil orders, price quotations, arrange delivery and provide after-sales support.',
-            'To send transactional email — order confirmations, status updates and quotations. These are not marketing and cannot be unsubscribed from while an order is active.',
+            'To answer your inquiry — to call or message you back with availability, lead time and a price, and to arrange delivery or collection.',
+            'To send you a copy of your inquiry by email, if you gave us an address. This is not marketing.',
             'To send occasional product and stock updates, but only if you subscribed to the newsletter. Every such email carries an unsubscribe link.',
           ],
         },
         {
           heading: 'Payment information',
           body: [
-            'We do not see or store card numbers. Card payments are processed by Stripe, who handle the card data directly under their own privacy terms.',
-            'For bank transfers we only see what appears on the transfer receipt you send us.',
+            'None is collected here. Nothing is paid through this website — every transaction is settled at our counter or by bank transfer, arranged directly with you.',
           ],
         },
         {
           heading: 'Who we share it with',
           body: [
-            'Courier companies, so they can deliver your order — name, address and phone number only.',
-            'Our payment processor and email provider, as needed to take payment and send transactional email.',
+            'Courier companies, so they can deliver goods you have bought — name, address and phone number only.',
+            'Our email provider, only to deliver a copy of your inquiry to you.',
             'We do not sell your data, and we do not share it for advertising.',
           ],
         },
         {
           heading: 'Cookies',
           body: [
-            'We use a small number of essential cookies: an authentication cookie if you are signed in, and a session cookie so a guest cart survives a page reload. Both are httpOnly and cannot be read by scripts.',
+            'One essential cookie: a session identifier so your inquiry list survives a page reload. It is httpOnly and cannot be read by scripts. Staff signing in to the admin area get an authentication cookie; customers never do, because there is nothing to sign in to.',
           ],
         },
         {

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bell, ExternalLink, LogOut, Menu, Search, UserRound } from 'lucide-react';
+import { Bell, ExternalLink, LogOut, Menu, Search } from 'lucide-react';
 import { Avatar, AvatarFallback, initialsOf } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/tooltip';
 import { apiClient } from '@/lib/api-client';
@@ -28,12 +27,13 @@ export function AdminTopbar({
 }: {
   onOpenNav: () => void;
   /** Items needing attention, from `/admin/dashboard/stats`. */
-  pending?: { reviews: number; contacts: number; quotations: number };
+  pending?: { testimonials: number; contacts: number; inquiries: number };
 }): JSX.Element {
   const router = useRouter();
   const { user, signOut } = useAuth();
 
-  const total = (pending?.reviews ?? 0) + (pending?.contacts ?? 0) + (pending?.quotations ?? 0);
+  const total =
+    (pending?.testimonials ?? 0) + (pending?.contacts ?? 0) + (pending?.inquiries ?? 0);
 
   const onSearch = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -100,22 +100,23 @@ export function AdminTopbar({
               <p className="px-2.5 py-3 text-sm text-muted-foreground">Nothing waiting. All clear.</p>
             ) : (
               <>
-                {pending?.quotations ? (
+                {pending?.inquiries ? (
                   <DropdownMenuItem asChild>
-                    <Link href="/admin/quotations?status=new">
-                      New quotation requests
+                    {/* `/admin/quotations` was deleted in the pivot. */}
+                    <Link href="/admin/inquiries?status=new">
+                      New inquiries
                       <Badge variant="accent" className="ml-auto">
-                        {pending.quotations}
+                        {pending.inquiries}
                       </Badge>
                     </Link>
                   </DropdownMenuItem>
                 ) : null}
-                {pending?.reviews ? (
+                {pending?.testimonials ? (
                   <DropdownMenuItem asChild>
-                    <Link href="/admin/reviews">
-                      Reviews to moderate
+                    <Link href="/admin/testimonials">
+                      Testimonials awaiting publication
                       <Badge variant="warning" className="ml-auto">
-                        {pending.reviews}
+                        {pending.testimonials}
                       </Badge>
                     </Link>
                   </DropdownMenuItem>
@@ -157,13 +158,11 @@ export function AdminTopbar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href="/account/profile">
-                <UserRound />
-                My profile
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            {/*
+              There is no "my profile" screen. `/account/profile` was part of
+              the customer account area, which the catalogue pivot deleted —
+              this menu item survived it and led staff to a 404.
+            */}
             <DropdownMenuItem onSelect={() => void onSignOut()}>
               <LogOut />
               Sign out

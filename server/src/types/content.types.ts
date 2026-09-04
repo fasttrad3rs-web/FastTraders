@@ -1,21 +1,30 @@
 /**
- * Content & operations types: Review, Contact, Newsletter, Banner, Setting, AuditLog.
- * MIRRORED FILE — keep in sync with `client/src/types/content.types.ts`
- * (the client mirror omits AuditLog, which is admin-internal).
+ * Content & operations types: Testimonial, Contact, Newsletter, Banner, Setting, AuditLog.
+ * MIRRORED FILE — keep in sync with `client/src/types/content.types.ts`.
+ * AuditLog is included for the admin panel's activity feed.
  */
 
-/* -------------------------------- Review -------------------------------- */
+/* ------------------------------ Testimonial ------------------------------ */
 
-export interface Review {
+/**
+ * A customer quote, entered by staff.
+ *
+ * There is no public review form: with no customer accounts there is no way to
+ * verify a submitter, so quotes are transcribed from real correspondence and
+ * published under the business's own responsibility. `isPublished` is the
+ * gate — a quote can be captured now and cleared with the customer later.
+ */
+export interface Testimonial {
   id: string;
-  product: string;
-  user: string;
-  rating: 1 | 2 | 3 | 4 | 5;
-  title?: string;
-  comment: string;
-  images: string[];
-  isApproved: boolean;
-  isVerifiedPurchase: boolean;
+  quote: string;
+  author: string;
+  role?: string;
+  company?: string;
+  /** Optional link to the product the quote is about. */
+  product: string | null;
+  rating?: number;
+  isPublished: boolean;
+  displayOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,7 +33,7 @@ export interface Review {
 
 export type ContactStatus = 'new' | 'read' | 'responded';
 
-/** Where the enquiry came from — useful for attribution. */
+/** Where the contact came from — useful for attribution. */
 export type ContactSource = 'contact_form' | 'product_page' | 'whatsapp' | 'phone' | 'footer';
 
 export interface Contact {
@@ -82,16 +91,6 @@ export interface BusinessHours {
   note?: string;
 }
 
-export interface ShippingRule {
-  label: string;
-  /** Matches against the shipping address city; `*` is the fallback rule. */
-  city: string;
-  cost: number;
-  /** Order subtotal above which shipping is waived. */
-  freeAbove?: number;
-  etaDays: string;
-}
-
 export interface SocialLinks {
   facebook?: string;
   instagram?: string;
@@ -115,9 +114,6 @@ export interface Setting {
   mapEmbedUrl?: string;
   social: SocialLinks;
   businessHours: BusinessHours[];
-  shippingRules: ShippingRule[];
-  /** Default sales-tax rate as a percentage, e.g. 18 for 18% GST. */
-  defaultTaxRate: number;
   currency: 'PKR';
   announcement: {
     text?: string;

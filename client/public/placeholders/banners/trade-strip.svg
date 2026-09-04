@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Bill of materials">
+  <!--
+    Square, not a 1920x300 bar.
+
+    `PromoStrip` renders this as a 56px thumbnail with `object-cover`, so a wide
+    banner was cropped to a patch of flat cyan with the artwork sliced off the
+    right-hand edge. The strip's title, subtitle and CTA are all real text in
+    the component — this only ever needed to be a small mark beside them.
+  -->
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0v24" fill="none" stroke="#0F1B4C" stroke-opacity="0.08" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="240" height="240" fill="#00AEEF"/>
+  <rect width="240" height="240" fill="url(#grid)"/>
+
+  <!-- Document with line items: a bill of materials. -->
+  <g transform="translate(58 46)" fill="none" stroke="#0F1B4C" stroke-width="7"
+     stroke-linecap="round" stroke-linejoin="round" opacity="0.45">
+    <path d="M14 0h70l40 40v104a12 12 0 0 1-12 12H14a12 12 0 0 1-12-12V12A12 12 0 0 1 14 0z"/>
+    <path d="M84 0v40h40M28 74h68M28 102h68M28 130h40"/>
+  </g>
+</svg>

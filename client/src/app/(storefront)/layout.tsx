@@ -1,5 +1,5 @@
 import { AnnouncementBar, FloatingWhatsApp, Footer, Header, ScrollToTop } from '@/components/layout';
-import { MobileBottomNav } from '@/components/layout/header/mobile-nav';
+import { MobileActionBar } from '@/components/layout/mobile-action-bar';
 import { getSettings } from '@/lib/api/catalog';
 
 /**
@@ -25,8 +25,8 @@ export default async function StorefrontLayout({
 
       <Header />
 
-      {/* Bottom padding clears the sticky mobile nav. */}
-      <main id="main" className="pb-16 lg:pb-0">
+      {/* Clears the sticky mobile action bar (h-16 plus the safe-area inset). */}
+      <main id="main" className="pb-20 lg:pb-0">
         {children}
       </main>
 
@@ -34,7 +34,7 @@ export default async function StorefrontLayout({
 
       <FloatingWhatsApp />
       <ScrollToTop />
-      <MobileBottomNav />
+      <MobileActionBar />
     </>
   );
 }

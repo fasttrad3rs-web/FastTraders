@@ -1,13 +1,20 @@
-import { Types, type FilterQuery } from 'mongoose';
+import type { FilterQuery } from 'mongoose';
 import type { Request, Response } from 'express';
-import { Order, Quotation, Review, User, type IUser } from '../../models';
+import { User, type IUser } from '../../models';
 import { recordAudit } from '../../services/audit.service';
 import { toPublicUser } from '../../services/auth.service';
 import { ApiError } from '../../utils/ApiError';
-import { sendSuccess } from '../../utils/ApiResponse';
+import { sendCreated, sendSuccess } from '../../utils/ApiResponse';
 import { buildMeta, toSkip } from '../../utils/pagination';
 
-/** Customer and staff administration. */
+/**
+ * Staff administration.
+ *
+ * This used to double as the customer screen, joining each row to its
+ * inquiry history by email. That join is meaningless now: `User` holds only
+ * staff, and staff do not send inquiries. Buyers live on the inquiries themselves
+ * — `report.service.customerReport()` is what aggregates them.
+ */
 
 const SORTS: Record<string, Record<string, 1 | -1>> = {
   newest: { createdAt: -1 },
@@ -34,7 +41,7 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
   if (search) {
     const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const term = new RegExp(escaped, 'i');
-    filter.$or = [{ name: term }, { email: term }, { phone: term }, { companyName: term }];
+    filter.$or = [{ name: term }, { email: term }, { phone: term }];
   }
 
   const [users, total] = await Promise.all([
@@ -46,102 +53,73 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
     User.countDocuments(filter),
   ]);
 
-  // One aggregation covers the whole page rather than N per-row queries.
-  const spend = await Order.aggregate<{ _id: Types.ObjectId; orders: number; value: number }>([
-    {
-      $match: {
-        user: { $in: users.map((user) => user._id) },
-        orderStatus: { $nin: ['cancelled', 'returned'] },
-      },
-    },
-    { $group: { _id: '$user', orders: { $sum: 1 }, value: { $sum: '$total' } } },
-  ]);
-  const byUser = new Map(spend.map((row) => [row._id.toString(), row]));
-
-  const items = users.map((user) => {
-    const stats = byUser.get(user._id.toString());
-    return {
-      id: user._id.toString(),
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      companyName: user.companyName ?? null,
-      isActive: user.isActive,
-      isEmailVerified: user.isEmailVerified,
-      lastLogin: user.lastLogin ?? null,
-      createdAt: user.createdAt,
-      orderCount: stats?.orders ?? 0,
-      lifetimeValue: Math.round(stats?.value ?? 0),
-    };
-  });
+  const items = users.map((user) => ({
+    id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    isActive: user.isActive,
+    lastLogin: user.lastLogin ?? null,
+    createdAt: user.createdAt,
+  }));
 
   sendSuccess(res, { items, meta: buildMeta(total, page, limit) }, `${total} user(s)`);
 }
 
-/** Full customer profile: order history, RFQs, reviews and lifetime value. */
+/** One staff account. */
 export async function getUser(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
 
   const user = await User.findById(id);
   if (!user) throw ApiError.notFound('User not found');
 
-  const [orders, quotations, reviews, totals] = await Promise.all([
-    Order.find({ user: id })
-      .select('orderNumber total orderStatus paymentStatus createdAt items')
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean(),
-    Quotation.find({ user: id })
-      .select('quoteNumber status quotedTotal createdAt')
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean(),
-    Review.find({ user: id })
-      .select('product rating title isApproved createdAt')
-      .populate({ path: 'product', select: 'name slug' })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean(),
-    Order.aggregate<{ orders: number; value: number; first: Date; last: Date }>([
-      { $match: { user: new Types.ObjectId(id), orderStatus: { $nin: ['cancelled', 'returned'] } } },
-      {
-        $group: {
-          _id: null,
-          orders: { $sum: 1 },
-          value: { $sum: '$total' },
-          first: { $min: '$createdAt' },
-          last: { $max: '$createdAt' },
-        },
-      },
-    ]),
-  ]);
+  sendSuccess(res, { user: toPublicUser(user) }, user.name);
+}
 
-  const summary = totals[0];
+/**
+ * Create a staff account.
+ *
+ * Admin-only, and it is the only way in — `POST /auth/register` is gone, so
+ * nobody can self-serve their way into the back office. The password is
+ * hashed by the model's pre-save hook, never here.
+ */
+export async function createStaff(req: Request, res: Response): Promise<void> {
+  const input = req.body as {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    role: 'admin' | 'manager';
+  };
 
-  sendSuccess(
-    res,
-    {
-      user: toPublicUser(user),
-      lifetime: {
-        orders: summary?.orders ?? 0,
-        value: Math.round(summary?.value ?? 0),
-        averageOrderValue: summary?.orders ? Math.round(summary.value / summary.orders) : 0,
-        firstOrder: summary?.first ?? null,
-        lastOrder: summary?.last ?? null,
-        quotations: quotations.length,
-      },
-      orders,
-      quotations,
-      reviews,
-    },
-    `Customer ${user.name}`,
-  );
+  if (await User.exists({ email: input.email })) {
+    throw ApiError.conflict('An account with this email already exists');
+  }
+
+  const user = await User.create({
+    name: input.name,
+    email: input.email,
+    phone: input.phone,
+    passwordHash: input.password,
+    role: input.role,
+    isEmailVerified: true,
+  });
+
+  recordAudit({
+    req,
+    action: 'create',
+    entity: 'User',
+    entityId: user._id.toString(),
+    after: { email: user.email, role: user.role },
+  });
+
+  sendCreated(res, toPublicUser(user), `${user.name} can now sign in as a ${user.role}.`);
 }
 
 export async function updateRole(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
-  const { role } = req.body as { role: 'customer' | 'admin' | 'manager' };
+  const { role } = req.body as { role: 'admin' | 'manager' };
 
   const user = await User.findById(id).select('+refreshTokens');
   if (!user) throw ApiError.notFound('User not found');

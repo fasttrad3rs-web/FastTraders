@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { imageProps } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import type { Banner } from '@/types';
 
@@ -79,7 +80,7 @@ export function HeroSlider({ banners }: { banners: Banner[] }): JSX.Element | nu
                   variant="outline"
                   className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
                 >
-                  <Link href="/request-quote">
+                  <Link href="/submit-inquiry">
                     <FileText />
                     Request a Quote
                   </Link>
@@ -87,14 +88,53 @@ export function HeroSlider({ banners }: { banners: Banner[] }): JSX.Element | nu
               </div>
             </div>
 
-            <div className="relative hidden aspect-[16/10] overflow-hidden rounded-lg border border-white/10 lg:block">
+            {/*
+              Art direction, not a duplicate.
+
+              The desktop crop is 16:10 and sits beside the text. On a phone
+              there is no room for that, so the admin form asks for a separate
+              portrait crop — and until now it collected one and never rendered
+              it, leaving every mobile visitor with a text-only hero on the most
+              mobile-heavy audience this site has.
+
+              `mobileImage` is optional, so the small-screen block only appears
+              when one was actually supplied. Given the 3G target, adding an
+              image that is not there is worse than showing none.
+            */}
+            {banner.mobileImage ? (
+              <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-white/10 lg:hidden">
+                <Image
+                  {...imageProps(banner.mobileImage)}
+                  alt={banner.title}
+                  fill
+                  sizes="(min-width: 1024px) 0px, 100vw"
+                  priority={position === 0}
+                  className="object-cover"
+                />
+              </div>
+            ) : null}
+
+            {/*
+              `object-contain`, not `cover`.
+
+              The hero art is currently the 1200x630 brand card, and the slot is
+              16:10. Covering it crops 16% of the width — enough to cut the logo
+              mark and the first letter off every line ("ndustrial", "race
+              Tower"). Containing it letterboxes instead, and the bands are
+              invisible because the card's background is the same navy as the
+              hero behind it.
+
+              When real photography replaces the card, switch this back to
+              `object-cover` — a photo should fill the frame.
+            */}
+            <div className="relative hidden aspect-[16/10] overflow-hidden rounded-lg border border-white/10 bg-brand-dark lg:block">
               <Image
-                src={banner.image}
+                {...imageProps(banner.image)}
                 alt={banner.title}
                 fill
                 sizes="(max-width: 1024px) 0px, 50vw"
                 priority={position === 0}
-                className="object-cover"
+                className="object-contain"
               />
             </div>
           </div>

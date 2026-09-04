@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 828 1000" width="828" height="1000" role="img" aria-label="Industrial switchgear">
+  <!--
+    Portrait crop of the hero, for phones. 828x1000, matching the admin hint.
+
+    No words anywhere in the artwork. The page already carries the headline,
+    the strapline and the phone number as real text — repeating them in pixels
+    would say everything twice in a second typeface, unreadable to a screen
+    reader and impossible to translate for the Urdu build. Swap in a photo of
+    real stock when Sharjeel provides one; nothing else has to change.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F1B4C"/>
+      <stop offset="1" stop-color="#1B2A6B"/>
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0v48" fill="none" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="828" height="1000" fill="url(#bg)"/>
+  <rect width="828" height="1000" fill="url(#grid)"/>
+
+  <g fill="none" stroke="#00AEEF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <!-- Moulded-case breaker, centred in the taller frame. -->
+    <g transform="translate(264 250)">
+      <rect x="0" y="0" width="300" height="330" rx="18"/>
+      <path d="M150 60v78M96 160h108M150 182v96"/>
+      <circle cx="150" cy="160" r="10" fill="#00AEEF" stroke="none"/>
+    </g>
+
+    <!-- Terminal rail beneath it, so the lower half is not dead space. -->
+    <g transform="translate(214 660)">
+      <path d="M0 40h400"/>
+      <rect x="40" y="0" width="60" height="80" rx="6"/>
+      <rect x="130" y="0" width="60" height="80" rx="6"/>
+      <rect x="220" y="0" width="60" height="80" rx="6"/>
+      <rect x="310" y="0" width="60" height="80" rx="6"/>
+    </g>
+  </g>
+
+  <!-- Brand accent, keeps the composition anchored. -->
+  <rect x="264" y="850" width="140" height="6" fill="#00AEEF" opacity="0.8"/>
+</svg>

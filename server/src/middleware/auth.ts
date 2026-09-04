@@ -20,7 +20,7 @@ function isAccessTokenPayload(value: unknown): value is AccessTokenPayload {
   return (
     typeof candidate.sub === 'string' &&
     typeof candidate.email === 'string' &&
-    (candidate.role === 'admin' || candidate.role === 'manager' || candidate.role === 'customer')
+    (candidate.role === 'admin' || candidate.role === 'manager')
   );
 }
 
@@ -80,7 +80,10 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction): 
 
 /** Restrict a route to one or more roles. Must run after `protect`. */
 export function restrictTo(...roles: UserRole[]): RequestHandler {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  // Named, not anonymous: the route-table script reads `layer.name` off the
+  // Express stack, and an unnamed guard is invisible to it. It also makes
+  // stack traces say which middleware rejected the request.
+  return function restrictTo(req: Request, _res: Response, next: NextFunction): void {
     if (!req.user) {
       next(ApiError.unauthorized('Authentication required'));
       return;

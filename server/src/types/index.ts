@@ -5,22 +5,20 @@
  * Entity interfaces describe the *serialised API shape* (ids as strings, dates
  * as ISO strings). Mongoose document interfaces live beside their schemas in
  * `src/models/` and may carry server-only fields such as `passwordHash` and
- * `costPrice`.
+ * internal pricing fields.
  */
 
 export type { ApiResponse, ApiErrorResponse, ApiErrorDetail, Paginated } from './api';
 
 import type { UserRole } from './user.types';
 
-export type { UserRole, Province, Address, User, AuthTokens } from './user.types';
-export { PROVINCES } from './user.types';
+export type { UserRole, User, AuthTokens } from './user.types';
 
 export type {
   Seo,
   Category,
   Brand,
-  PricingMode,
-  StockStatus,
+  Availability,
   ProductUnit,
   ProductImage,
   Specification,
@@ -29,28 +27,28 @@ export type {
   Product,
 } from './catalog.types';
 
+/**
+ * Commerce types (Order, Cart, Coupon, payment) were removed when the business
+ * moved to a catalogue-only model, along with every customer-account type
+ * (Address, Province). The Quotation became the Inquiry.
+ */
 export type {
-  CustomerDetails,
-  PaymentMethod,
-  PaymentStatus,
-  OrderStatus,
-  OrderItem,
-  PaymentDetails,
-  StatusHistoryEntry,
-  Order,
-  QuotationStatus,
-  QuotationItem,
-  Attachment,
-  Quotation,
-  CartType,
-  CartItem,
-  Cart,
-  CouponType,
-  Coupon,
-} from './commerce.types';
+  InquiryType,
+  InquiryStatus,
+  InquiryPriority,
+  InquirySource,
+  ContactMethod,
+  Urgency,
+  InquiryCustomer,
+  InquiryItem,
+  ReferenceFile,
+  SourcingDetails,
+  FollowUp,
+  Inquiry,
+} from './inquiry.types';
 
 export type {
-  Review,
+  Testimonial,
   ContactStatus,
   ContactSource,
   Contact,
@@ -58,7 +56,6 @@ export type {
   BannerPosition,
   Banner,
   BusinessHours,
-  ShippingRule,
   SocialLinks,
   Setting,
   AuditAction,

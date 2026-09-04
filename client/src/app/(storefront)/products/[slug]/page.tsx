@@ -2,11 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Breadcrumb } from '@/components/ui/pagination';
-import { StockBadge } from '@/components/ui/badge';
-import { PriceDisplay, Rating } from '@/components/ui/commerce';
+import { AvailabilityBadge, PriceOnRequest, SourcingCTA } from '@/components/shared';
 import { JsonLd } from '@/components/shared/json-ld';
 import { ProductGallery } from '@/components/product/product-gallery';
-import { ProductActions } from '@/components/product/product-actions';
 import { ProductTabs } from '@/components/product/product-tabs';
 import { ProductCard } from '@/components/product/product-card';
 import { RecentlyViewed } from '@/components/product/recently-viewed';
@@ -64,6 +62,7 @@ export default async function ProductPage({
   if (!data) notFound();
 
   const { product, related } = data;
+
   const brand = named(product.brand);
   const category = named(product.category);
   const subCategory = named(product.subCategory);
@@ -93,7 +92,12 @@ export default async function ProductPage({
       />
 
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <ProductGallery images={product.images} name={product.name} sku={product.sku} />
+        <ProductGallery
+          images={product.images}
+          name={product.name}
+          sku={product.sku}
+          brand={brand}
+        />
 
         <div>
           <div className="flex flex-wrap items-center gap-3">
@@ -105,10 +109,15 @@ export default async function ProductPage({
                 {brand.name}
               </Link>
             ) : null}
-            <StockBadge status={product.stockStatus} />
+            <AvailabilityBadge value={product.availability} size="sm" />
             {product.isNewArrival ? (
               <span className="rounded bg-brand-navy px-1.5 py-0.5 text-2xs font-bold uppercase text-white">
                 New
+              </span>
+            ) : null}
+            {product.isImportItem ? (
+              <span className="rounded border border-brand-navy/25 px-1.5 py-0.5 text-2xs font-bold uppercase text-brand-navy">
+                Imported
               </span>
             ) : null}
           </div>
@@ -130,10 +139,6 @@ export default async function ProductPage({
             ) : null}
           </dl>
 
-          {product.reviewCount > 0 ? (
-            <Rating value={product.ratingAvg} count={product.reviewCount} className="mt-3" />
-          ) : null}
-
           {product.shortDescription ? (
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               {product.shortDescription}
@@ -141,23 +146,26 @@ export default async function ProductPage({
           ) : null}
 
           <div className="mt-5 border-y border-border py-5">
-            <PriceDisplay
-              price={product.price}
-              comparePrice={product.comparePrice}
-              pricingMode={product.pricingMode}
-              unit={product.unit}
-              size="lg"
+            <AvailabilityBadge
+              value={product.availability}
+              {...(product.leadTime ? { leadTime: product.leadTime } : {})}
             />
-            {product.pricingMode !== 'quote' ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Inclusive of {product.taxRate}% sales tax where applicable.
-              </p>
-            ) : null}
+
+            <div className="mt-4">
+              <PriceOnRequest product={product} size="lg" />
+            </div>
+
+            {/* The three things a trade buyer checks before ringing anyone. */}
+            <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="text-success">Genuine products</span>
+              <span aria-hidden>·</span>
+              <span>Authorized brands</span>
+              <span aria-hidden>·</span>
+              <span>Lahore delivery</span>
+            </p>
           </div>
 
-          <div className="mt-5">
-            <ProductActions product={product} />
-          </div>
+          <SourcingCTA productSlug={product.slug} className="mt-5" />
         </div>
       </div>
 

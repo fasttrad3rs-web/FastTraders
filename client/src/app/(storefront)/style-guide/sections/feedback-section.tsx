@@ -45,7 +45,7 @@ export function FeedbackSection(): JSX.Element {
       <div className="space-y-8">
         <div className="grid gap-3 lg:grid-cols-2">
           <Alert variant="info" title="Price on request">
-            This item is quote-only. Add it to your inquiry list and we will price it for you.
+            Nothing here is priced publicly. Add it to your inquiry list and we will quote it for you.
           </Alert>
           <Alert variant="success" title="Order confirmed">
             Order FT-202607-0042 has been placed. A confirmation email is on its way.
@@ -63,7 +63,7 @@ export function FeedbackSection(): JSX.Element {
             Toasts, tooltips and menus
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant="outline" onClick={() => toast.success('Added to cart', { description: '2 × Schneider LC1D18M7' })}>
+            <Button variant="outline" onClick={() => toast.success('Added to your inquiry list', { description: '2 × Schneider LC1D18M7' })}>
               Success toast
             </Button>
             <Button variant="outline" onClick={() => toast.error('Out of stock', { description: 'Only 3 remaining.' })}>
@@ -95,7 +95,7 @@ export function FeedbackSection(): JSX.Element {
               <DropdownMenuContent align="start">
                 <DropdownMenuLabel>Sort by</DropdownMenuLabel>
                 <DropdownMenuItem>Newest first</DropdownMenuItem>
-                <DropdownMenuItem>Price: low to high</DropdownMenuItem>
+                <DropdownMenuItem>Name: A to Z</DropdownMenuItem>
                 <DropdownMenuItem>Best selling</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>Reset</DropdownMenuItem>
@@ -108,9 +108,9 @@ export function FeedbackSection(): JSX.Element {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Request a bulk price</DialogTitle>
+                  <DialogTitle>Request a bulk quote</DialogTitle>
                   <DialogDescription>
-                    Send us the quantity you need and we will come back with a trade price within
+                    Send us the quantity you need and we will come back with a trade quote within
                     one working day.
                   </DialogDescription>
                 </DialogHeader>
@@ -129,15 +129,15 @@ export function FeedbackSection(): JSX.Element {
               </Button>
               <SheetContent side="right">
                 <div className="border-b border-border p-5">
-                  <DialogTitle>Your cart</DialogTitle>
+                  <DialogTitle>Your inquiry list</DialogTitle>
                 </div>
                 <div className="flex-1 p-5 text-sm text-muted-foreground">
-                  The cart drawer uses the same primitive as the mobile menu — one Radix root,
+                  The list drawer uses the same primitive as the mobile menu — one Radix root,
                   two presentations.
                 </div>
                 <div className="border-t border-border p-5">
                   <Button variant="cta" block>
-                    Checkout
+                    Send inquiry
                   </Button>
                 </div>
               </SheetContent>
@@ -169,7 +169,7 @@ export function FeedbackSection(): JSX.Element {
         <div className="grid gap-4 lg:grid-cols-2">
           <EmptyState
             title="No products match those filters"
-            description="Try widening the price range or clearing a brand filter."
+            description="Try clearing a brand or availability filter."
             icon={<PackageSearch />}
             action={<Button variant="outline" size="sm">Clear all filters</Button>}
           />

@@ -31,7 +31,9 @@ const ACTION_VARIANT: Record<string, 'default' | 'success' | 'warning' | 'danger
   logout: 'muted',
 };
 
-const ENTITIES = ['all', 'Product', 'Order', 'Quotation', 'User', 'Category', 'Brand', 'Setting', 'Review'];
+/* The entities the audit service actually writes. Order, Quotation and
+   Review went with the commerce model — filtering by them matched nothing. */
+const ENTITIES = ['all', 'Product', 'Inquiry', 'Contact', 'User', 'Category', 'Brand', 'Setting'];
 
 /** Append-only activity feed. Entries expire after two years via a TTL index. */
 export default function AdminAuditLogsPage(): JSX.Element {

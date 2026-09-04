@@ -10,7 +10,6 @@ import {
 } from '@tanstack/react-query';
 import { apiClient, unwrap } from '@/lib/api-client';
 import type { AdminList, AdminQuery } from './admin';
-import type { QuotationResponse, OrderResponse } from './cart.types';
 import type { Setting } from '@/types';
 
 /**
@@ -82,56 +81,11 @@ export function useCrud<T>(resource: string): CrudApi<T> {
   };
 }
 
-/* ------------------------------- Quotations ------------------------------ */
-
-export function useAdminQuotation(id: string): UseQueryResult<QuotationResponse> {
-  return useQuery({
-    queryKey: resourceKeys.item('quotations', id),
-    queryFn: async () => unwrap(await apiClient.get<QuotationResponse>(`/admin/quotations/${id}`)),
-    enabled: id.length > 0,
-  });
-}
-
-export interface QuotationApi {
-  price: UseMutationResult<QuotationResponse, Error, Record<string, unknown>>;
-  send: UseMutationResult<{ sentTo: string }, Error, void>;
-  convert: UseMutationResult<{ order: OrderResponse }, Error, Record<string, unknown>>;
-  assign: UseMutationResult<QuotationResponse, Error, string | null>;
-}
-
-export function useQuotationActions(id: string): QuotationApi {
-  const queryClient = useQueryClient();
-  const seed = (data: QuotationResponse): void => {
-    queryClient.setQueryData(resourceKeys.item('quotations', id), data);
-    void queryClient.invalidateQueries({ queryKey: ['admin', 'quotations'] });
-  };
-
-  return {
-    price: useMutation({
-      mutationFn: async (body) =>
-        unwrap(await apiClient.patch<QuotationResponse>(`/admin/quotations/${id}`, body)),
-      onSuccess: seed,
-    }),
-    send: useMutation({
-      mutationFn: async () =>
-        unwrap(await apiClient.post<{ sentTo: string }>(`/admin/quotations/${id}/send`)),
-      onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['admin', 'quotations'] }),
-    }),
-    convert: useMutation({
-      mutationFn: async (body) =>
-        unwrap(await apiClient.post<{ order: OrderResponse }>(`/admin/quotations/${id}/convert`, body)),
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: ['admin', 'quotations'] });
-        void queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-      },
-    }),
-    assign: useMutation({
-      mutationFn: async (assignedTo) =>
-        unwrap(await apiClient.patch<QuotationResponse>(`/admin/quotations/${id}/assign`, { assignedTo })),
-      onSuccess: seed,
-    }),
-  };
-}
+/*
+ * The quotation hooks lived here. Every one of them called `/admin/quotations`,
+ * which the pivot deleted — they had been dead since, and would have 404'd the
+ * moment anything rendered them. Inquiries are served by `lib/api/inquiries.ts`.
+ */
 
 /* -------------------------------- Settings ------------------------------- */
 

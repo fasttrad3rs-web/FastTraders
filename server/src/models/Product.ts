@@ -1,17 +1,22 @@
 import { Schema, model, type HydratedDocument, type Model, type Types } from 'mongoose';
 import { imageSchema, jsonTransform, seoSchema } from './shared.schemas';
-import { datasheetSchema, specificationSchema, variantSchema } from './Product.subschemas';
-import type {
-  Datasheet,
-  PricingMode,
-  ProductImage,
-  ProductUnit,
-  ProductVariant,
-  Seo,
-  Specification,
-  StockStatus,
-} from '../types';
+import {
+  datasheetSchema,
+  specificationSchema,
+  variantSchema,
+  type ProductVariantRecord,
+} from './Product.subschemas';
+import { toPublicProduct, type PublicProduct } from './Product.public';
+import type { Availability, Datasheet, ProductImage, ProductUnit, Seo, Specification } from '../types';
 
+/**
+ * Product — catalogue-only.
+ *
+ * Nothing here is priced publicly. `lastQuotedPrice`, `internalCost`,
+ * `supplierNotes` and `stock` are staff data: they exist so a price can be
+ * built and stock can be managed, and the public API reaches them through
+ * nothing at all. `toPublicJSON()` is the single gate — see `Product.public.ts`.
+ */
 export interface IProduct {
   name: string;
   slug: string;
@@ -25,23 +30,38 @@ export interface IProduct {
   subCategory: Types.ObjectId | null;
   brand: Types.ObjectId;
 
-  pricingMode: PricingMode;
-  price?: number;
-  comparePrice?: number;
-  /** SERVER-ONLY. `select: false` — must never reach a public response. */
-  costPrice?: number;
-  taxRate: number;
-  currency: 'PKR';
+  /* ------------------------- Internal, admin-only ------------------------ */
 
+  /**
+   * What we last quoted this at, in PKR. A memory aid for whoever builds the
+   * next call — not a list price, and never published. Prices here move
+   * with the dollar and with what the supplier is asking that week, which is
+   * exactly why the site does not print them.
+   */
+  lastQuotedPrice?: number;
+  /** What it costs us. */
+  internalCost?: number;
+  /** Supplier, lead-time caveats, MOQ quirks. Staff eyes only. */
+  supplierNotes?: string;
+  /** Numeric on-hand count. Public callers get `availability`, not a number. */
   stock: number;
   lowStockThreshold: number;
-  stockStatus: StockStatus;
+
+  /* --------------------------- Public signals ---------------------------- */
+
+  /** What a buyer needs to know instead of a stock figure. */
+  availability: Availability;
+  /** Free text, e.g. "2-3 days" or "3-4 weeks (imported)". */
+  leadTime?: string;
+  /** Brought in from abroad rather than held locally. */
+  isImportItem: boolean;
+
   unit: ProductUnit;
   minOrderQty: number;
 
   images: ProductImage[];
   specifications: Specification[];
-  variants: ProductVariant[];
+  variants: ProductVariantRecord[];
   datasheets: Datasheet[];
 
   tags: string[];
@@ -51,8 +71,6 @@ export interface IProduct {
   isBestSeller: boolean;
   isActive: boolean;
 
-  ratingAvg: number;
-  reviewCount: number;
   viewCount: number;
   salesCount: number;
 
@@ -61,9 +79,22 @@ export interface IProduct {
   updatedAt: Date;
 }
 
-export type ProductDocument = HydratedDocument<IProduct>;
+/** Instance methods. */
+export interface IProductMethods {
+  toPublicJSON(): PublicProduct;
+}
 
-const productSchema = new Schema<IProduct>(
+export type ProductDocument = HydratedDocument<IProduct, IProductMethods>;
+export type ProductModel = Model<IProduct, Record<string, never>, IProductMethods>;
+
+export const AVAILABILITY_VALUES = [
+  'ready_stock',
+  'available_on_order',
+  'import_on_request',
+  'discontinued',
+] as const;
+
+const productSchema = new Schema<IProduct, ProductModel, IProductMethods>(
   {
     name: { type: String, required: [true, 'Product name is required'], trim: true, maxlength: 200 },
     slug: {
@@ -84,40 +115,30 @@ const productSchema = new Schema<IProduct>(
     subCategory: { type: Schema.Types.ObjectId, ref: 'Category', default: null, index: true },
     brand: { type: Schema.Types.ObjectId, ref: 'Brand', required: true, index: true },
 
-    /* ------------------------- Hybrid commerce ------------------------- */
-    pricingMode: {
-      type: String,
-      enum: ['retail', 'quote', 'both'],
-      required: true,
-      default: 'quote',
-      index: true,
-    },
-    price: {
-      type: Number,
-      min: [0, 'Price cannot be negative'],
-      // Required unless the product is quote-only.
-      required: [
-        function requiredForRetail(this: IProduct): boolean {
-          return this.pricingMode !== 'quote';
-        },
-        'Price is required for retail products',
-      ],
-    },
-    comparePrice: { type: Number, min: 0 },
-    costPrice: { type: Number, min: 0, select: false },
-    /** Percentage, e.g. 18 for 18% GST. */
-    taxRate: { type: Number, default: 18, min: 0, max: 100 },
-    currency: { type: String, enum: ['PKR'], default: 'PKR' },
+    /* ----------------------- Internal (admin-only) ---------------------- */
+    // `select: false` is defence in depth, not the guard. The guard is
+    // `toPublicJSON()`, which whitelists — a projection can be forgotten or
+    // overridden, a whitelist cannot leak a field nobody added to it.
+    lastQuotedPrice: { type: Number, min: 0, select: false },
+    internalCost: { type: Number, min: 0, select: false },
+    supplierNotes: { type: String, trim: true, maxlength: 2000, select: false },
 
     /* ------------------------------ Stock ------------------------------ */
+    // Selectable, because the filter and the low-stock report need it and a
+    // `select: false` numeric field is a footgun around pre-save hooks. It is
+    // simply never in the public whitelist.
     stock: { type: Number, default: 0, min: 0 },
     lowStockThreshold: { type: Number, default: 5, min: 0 },
-    stockStatus: {
+
+    availability: {
       type: String,
-      enum: ['in_stock', 'low_stock', 'out_of_stock', 'on_order'],
-      default: 'out_of_stock',
+      enum: AVAILABILITY_VALUES,
+      default: 'available_on_order',
       index: true,
     },
+    leadTime: { type: String, trim: true, maxlength: 80 },
+    isImportItem: { type: Boolean, default: false, index: true },
+
     unit: {
       type: String,
       enum: ['piece', 'meter', 'roll', 'box', 'set'],
@@ -140,8 +161,6 @@ const productSchema = new Schema<IProduct>(
     isActive: { type: Boolean, default: true, index: true },
 
     /* ----------------------------- Metrics ----------------------------- */
-    ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
-    reviewCount: { type: Number, default: 0, min: 0 },
     viewCount: { type: Number, default: 0, min: 0 },
     salesCount: { type: Number, default: 0, min: 0 },
 
@@ -166,21 +185,20 @@ productSchema.index(
 productSchema.index({ category: 1, brand: 1, isActive: 1 });
 productSchema.index({ subCategory: 1, isActive: 1 });
 productSchema.index({ isActive: 1, isFeatured: 1, createdAt: -1 });
-productSchema.index({ pricingMode: 1, isActive: 1 });
-productSchema.index({ price: 1, isActive: 1 });
 productSchema.index({ salesCount: -1 });
 
 /* -------------------------------- Hooks --------------------------------- */
 
-/** Derive `stockStatus` from `stock` unless it was set explicitly to `on_order`. */
-productSchema.pre('save', function deriveStockStatus(next) {
-  if (this.stockStatus === 'on_order' && !this.isModified('stock')) {
-    next();
-    return;
+/**
+ * Availability is an editorial choice, not a computed one — no stock figure
+ * can tell you whether something is imported on request or discontinued. The
+ * one thing worth automating is the case that would otherwise mislead a
+ * buyer: an item advertised as ready stock that has run out.
+ */
+productSchema.pre('save', function demoteEmptyReadyStock(next) {
+  if (this.availability === 'ready_stock' && this.stock <= 0) {
+    this.availability = 'available_on_order';
   }
-  if (this.stock <= 0) this.stockStatus = 'out_of_stock';
-  else if (this.stock <= this.lowStockThreshold) this.stockStatus = 'low_stock';
-  else this.stockStatus = 'in_stock';
   next();
 });
 
@@ -200,29 +218,28 @@ productSchema.pre('save', function fillSeoDefaults(next) {
   next();
 });
 
+/* ------------------------------- Methods -------------------------------- */
+
+/**
+ * The public shape. Every public controller returns this and only this.
+ * Implementation lives in `Product.public.ts` so lean queries — which have no
+ * document methods — can share exactly the same whitelist.
+ */
+productSchema.methods.toPublicJSON = function toPublicJSON(this: ProductDocument): PublicProduct {
+  return toPublicProduct(this.toObject({ virtuals: true }));
+};
+
 /* ------------------------------- Virtuals ------------------------------- */
 
-/** True when the product can be added to the Shopping Cart. */
-productSchema.virtual('isBuyable').get(function isBuyable(this: ProductDocument): boolean {
-  return this.pricingMode !== 'quote' && this.isActive && this.stock > 0;
+/** Everything active is enquirable — there is no other path. */
+productSchema.virtual('isEnquirable').get(function isEnquirable(this: ProductDocument): boolean {
+  return this.isActive && this.availability !== 'discontinued';
 });
 
-/** True when the product can be added to the Inquiry Cart. */
-productSchema.virtual('isQuotable').get(function isQuotable(this: ProductDocument): boolean {
-  return this.pricingMode !== 'retail' && this.isActive;
-});
-
-productSchema.virtual('discountPercent').get(function discountPercent(
-  this: ProductDocument,
-): number {
-  if (!this.price || !this.comparePrice || this.comparePrice <= this.price) return 0;
-  return Math.round(((this.comparePrice - this.price) / this.comparePrice) * 100);
-});
-
-productSchema.virtual('reviews', {
-  ref: 'Review',
+productSchema.virtual('testimonials', {
+  ref: 'Testimonial',
   localField: '_id',
   foreignField: 'product',
 });
 
-export const Product: Model<IProduct> = model<IProduct>('Product', productSchema);
+export const Product: ProductModel = model<IProduct, ProductModel>('Product', productSchema);

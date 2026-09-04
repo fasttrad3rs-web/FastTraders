@@ -1,27 +1,36 @@
 # Fast Traders — fasttraders.co
 
-Production e-commerce + RFQ platform for **Fast Traders**, an industrial & electrical
+Production catalogue + RFQ platform for **Fast Traders**, an industrial & electrical
 equipment trading business in Lahore, Pakistan.
 
 > _"We Deal In All Kinds Of Industrial Equipment, Parts & Accessories"_
 
 ---
 
-## Business model — hybrid commerce
+## Business model — catalogue only
 
-Every product carries a `pricingMode`:
+**No price is ever shown publicly.** There is no cart, no checkout, no payments and
+no customer accounts. The site is a lead generator: every product CTA drives the
+visitor to phone, WhatsApp, or an enquiry.
 
-| Mode     | Behaviour                                                             |
-| -------- | --------------------------------------------------------------------- |
-| `retail` | Price shown, **Add to Cart**, online checkout & payment.               |
-| `quote`  | Price hidden, **Request Quote**, goes to the Inquiry Cart.             |
-| `both`   | Price shown **and** a **Bulk / Trade Price?** quote button.            |
+```
+browse catalogue → build an enquiry list → send an RFQ
+        ↓                                       ↓
+   call / WhatsApp                    admin prices it → quotation PDF
+                                              ↓
+                              customer accepts → settled offline
+```
 
-The site therefore runs **two parallel carts**:
+One flow, one document. `Quotation` is the only commercial record the system keeps;
+when a deal closes it is marked fulfilled with a reference, not turned into an order.
 
-- **Shopping Cart** → Checkout → `Order`
-- **Inquiry Cart** → RFQ form → `Quotation` → admin replies with a quote
-  (an accepted quotation can be converted to an order by an admin).
+Products carry `isMadeToOrder` — Fast Traders also sources and imports against an
+order, and a sourced item says so instead of showing a stock count.
+
+**Why prices are hidden, mechanically:** `price`, `costPrice` and `variants[].price`
+are all `select: false` on the model, no public projection names them, and there is
+no price filter, price sort or price-range facet — a range filter over a hidden
+field is an oracle that would binary-search the number in a dozen requests.
 
 ---
 
@@ -34,8 +43,7 @@ shadcn/ui, Zustand, TanStack Query, React Hook Form + Zod, Framer Motion, next/i
 (access + refresh, httpOnly cookies), bcrypt, Zod, Multer + Cloudinary, Nodemailer,
 Winston, Helmet, CORS, express-rate-limit.
 
-**Payments** — Stripe (international), JazzCash / Easypaisa adapters (placeholder),
-Cash on Delivery, Bank Transfer.
+**Payments** — none. The site takes no money.
 
 **Deployment** — Client → Vercel · Server → Railway/Render · DB → MongoDB Atlas ·
 Images → Cloudinary.
@@ -48,10 +56,10 @@ Images → Cloudinary.
 fast-traders/
 ├── client/                  # Next.js 14 App Router frontend
 │   ├── src/app/             # routes (App Router)
-│   ├── src/components/      # ui/ layout/ product/ cart/ admin/ shared/
+│   ├── src/components/      # ui/ layout/ product/ catalog/ admin/ shared/
 │   ├── src/lib/             # api client, utils, constants, validators, env
 │   ├── src/hooks/           # reusable React hooks
-│   ├── src/store/           # zustand slices (cart, inquiry, ui)
+│   ├── src/store/           # zustand slices (enquiry list, ui)
 │   ├── src/types/           # shared type definitions (mirrors server)
 │   └── public/              # static assets
 ├── server/
@@ -87,18 +95,54 @@ npm install          # installs both workspaces from the repo root
 
 ### 2. Configure environment
 
+**[`SETUP.md`](./SETUP.md) walks through this end to end** — creating the Atlas
+cluster, Cloudinary and Mailtrap accounts, and every value that goes in the two
+env files, with the exact error message you get for each mistake.
+
 ```bash
 cp server/.env.example server/.env
 cp client/.env.example client/.env.local
+npm run doctor        # connects to each service and reports what is wrong
 ```
 
-Fill in every variable. **Both apps validate their environment with Zod at boot and
-crash immediately if a required variable is missing or malformed.**
+Both apps validate their environment with Zod at boot and crash immediately if
+a required variable is missing or malformed.
+
+#### Optional integrations
+
+Two features are off unless configured. Neither is required to run, and the
+sourcing form works fully without them — a shop cannot be blocked from taking
+enquiries because a trial account lapsed. Each logs its status once at boot.
+
+**reCAPTCHA v3** — scores public form submissions.
+
+| Variable | Where to get it |
+| --- | --- |
+| `RECAPTCHA_SECRET_KEY` | google.com/recaptcha/admin → register a v3 site |
+| `RECAPTCHA_MIN_SCORE` | Optional. Defaults to `0.5`, Google's own threshold |
+
+A low score never rejects the customer. The inquiry is recorded and flagged for
+staff instead — a real buyer on a shared office IP can score badly through no
+fault of their own, and refusing them loses a sale to stop a nuisance.
+
+**Twilio WhatsApp/SMS alerts** — pings the counter phone on every new inquiry.
+
+| Variable | Where to get it |
+| --- | --- |
+| `TWILIO_ACCOUNT_SID` | Twilio console, starts `AC…` |
+| `TWILIO_AUTH_TOKEN` | Paired with the SID |
+| `TWILIO_FROM` | `whatsapp:+14155238886` for the sandbox, or a purchased SMS number |
+| `TWILIO_ALERT_TO` | Optional. Defaults to `+923244234990` |
+
+All four must be set for alerts to fire. Email remains the guaranteed channel;
+this is the one that gets read within the hour, because the counter phone is in
+somebody's hand and the inbox is not. Failures are logged and swallowed — a
+Twilio outage must never turn a customer's successful enquiry into an error.
 
 ### 3. Run both apps
 
 ```bash
-npm run dev          # server on :5000, client on :3000
+npm run dev          # server on :5050, client on :3000
 ```
 
 | Script              | Description                                   |
@@ -110,6 +154,11 @@ npm run dev          # server on :5000, client on :3000
 | `npm run typecheck` | `tsc --noEmit` across both workspaces          |
 | `npm run format`    | Prettier write across the repo                 |
 | `npm run seed`      | Seed the database (categories, brands, admin)  |
+| `npm run verify`    | 41 catalogue-only invariants (no build needed)  |
+
+There is **no public sign-up**. The seed creates the first admin; further staff
+accounts are made by an admin through `POST /api/v1/admin/users`. Staff sign in at
+`/admin/login`.
 
 ---
 
@@ -168,4 +217,20 @@ Email: fasttrad3rs@gmail.com
 
 ---
 
-_Phase 1: repository skeleton. Features are built in later phases._
+## Verification
+
+```bash
+npm run verify       # 41 static checks, zero dependencies
+```
+
+Price privacy at every layer (model, projection, embedded path, filter, sort,
+facet, type, rendered component), no commerce code left, mirrored client/server
+types in sync, staff auth reachable, no file over 300 lines, no `any`. None of
+this is a type error, so `tsc` cannot catch any of it.
+
+A second **SSR pass** (12 checks) bundles the real components, server-renders
+them and greps the HTML — proving no PKR figure reaches the browser and that the
+specification table and testimonials are in the markup crawlers see. It needs
+esbuild, so it lives outside the dependency tree.
+
+Both are green. See `CATALOG-PIVOT.md` for what changed and what is still open.

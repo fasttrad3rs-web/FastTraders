@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Badge } from '@/components/ui/badge';
 import { ButtonsSection } from './sections/buttons-section';
 import { CommerceSection } from './sections/commerce-section';
+import { ContactSection } from './sections/contact-section';
 import { DataSection } from './sections/data-section';
 import { FeedbackSection } from './sections/feedback-section';
 import { FormsSection } from './sections/forms-section';
@@ -56,6 +57,7 @@ export default function StyleGuidePage(): JSX.Element {
         <DataSection />
         <FeedbackSection />
         <CommerceSection />
+        <ContactSection />
       </div>
     </div>
   );

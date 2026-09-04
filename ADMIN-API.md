@@ -1,5 +1,10 @@
 # Fast Traders — Admin API (Phase 4)
 
+> **Superseded.** This document describes the site before the catalogue-only
+> pivot — it still refers to prices, carts, checkout, payments, orders or
+> customer accounts, none of which exist any more. Kept as build history.
+> See [`CATALOG-PIVOT.md`](./CATALOG-PIVOT.md) for the current model.
+
 **67 routes** under `/api/v1/admin`, all behind one guard:
 
 ```ts

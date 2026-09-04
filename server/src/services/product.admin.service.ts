@@ -1,6 +1,15 @@
 import { Types } from 'mongoose';
-import { Brand, Category, Product, type IProduct, type ProductDocument } from '../models';
+import {
+  Brand,
+  Category,
+  Inquiry,
+  InquiryList,
+  Product,
+  type IProduct,
+  type ProductDocument,
+} from '../models';
 import { ApiError } from '../utils/ApiError';
+import { deleteImage } from './upload.service';
 import { uniqueSlug } from '../utils/slug';
 import type { BulkProductInput, CreateProductInput, StockAdjustmentInput, UpdateProductInput } from '../validators';
 
@@ -18,10 +27,29 @@ async function assertRefs(categoryId?: string, subCategoryId?: string | null, br
     );
   }
   if (subCategoryId) {
+    /*
+     * Existence is not enough — the sub-category must be a CHILD of the chosen
+     * category. The admin form used to offer every nested category regardless
+     * of parent, so a product could be filed under "Control Components" with a
+     * sub-category of "Sensors", which lives under Automation. The record
+     * saved, and then the category page showed no chip for it and the
+     * sub-category filter matched nothing: the product was effectively
+     * invisible under the taxonomy it claimed to belong to.
+     */
     checks.push(
-      Category.exists({ _id: subCategoryId }).then((found) => {
-        if (!found) throw ApiError.badRequest('The selected sub-category does not exist');
-      }),
+      Category.findById(subCategoryId)
+        .select('parent name')
+        .lean<{ parent?: Types.ObjectId | null; name: string } | null>()
+        .then((child) => {
+          if (!child) throw ApiError.badRequest('The selected sub-category does not exist');
+          if (!categoryId) return;
+
+          if (String(child.parent ?? '') !== String(categoryId)) {
+            throw ApiError.badRequest(
+              `"${child.name}" is not a sub-category of the category you selected`,
+            );
+          }
+        }),
     );
   }
   if (brandId) {
@@ -53,7 +81,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductD
 }
 
 export async function updateProduct(id: string, input: UpdateProductInput): Promise<ProductDocument> {
-  const product = await Product.findById(id).select('+costPrice');
+  const product = await Product.findById(id).select('+lastQuotedPrice +internalCost +supplierNotes +variants.price');
   if (!product) throw ApiError.notFound('Product not found');
 
   if (input.sku && input.sku !== product.sku) {
@@ -61,7 +89,17 @@ export async function updateProduct(id: string, input: UpdateProductInput): Prom
       throw ApiError.conflict(`SKU "${input.sku}" is already in use`);
     }
   }
-  await assertRefs(input.category, input.subCategory, input.brand);
+  /*
+   * The effective category, not just what the patch carries. A patch that sets
+   * only `subCategory` still has to be checked against the category already on
+   * the product, or the parentage rule is trivially bypassed by editing the
+   * two fields in separate requests.
+   */
+  await assertRefs(
+    input.category ?? String(product.category),
+    input.subCategory,
+    input.brand,
+  );
 
   // Renaming regenerates the slug unless one was supplied explicitly.
   if (input.slug) {
@@ -82,16 +120,11 @@ export async function updateProduct(id: string, input: UpdateProductInput): Prom
   if (category) product.category = new Types.ObjectId(category);
   if (brand) product.brand = new Types.ObjectId(brand);
 
-  // Guard the hybrid-commerce invariant across partial updates.
-  if (product.pricingMode !== 'quote' && typeof product.price !== 'number') {
-    throw ApiError.badRequest('A price is required unless the product is quote-only');
-  }
-
   await product.save();
   return product;
 }
 
-/** Soft delete — history and order lines must keep resolving. */
+/** Soft delete — history and inquiry lines must keep resolving. */
 export async function softDeleteProduct(id: string): Promise<ProductDocument> {
   const product = await Product.findById(id);
   if (!product) throw ApiError.notFound('Product not found');
@@ -99,6 +132,60 @@ export async function softDeleteProduct(id: string): Promise<ProductDocument> {
   product.isActive = false;
   await product.save();
   return product;
+}
+
+/**
+ * Permanent delete. Gone from the database, gone from Cloudinary.
+ *
+ * This exists because the admin previously had no way to remove anything. The
+ * `⋯` menu offered "Delete", which did exactly what the Active toggle does —
+ * set `isActive: false` — so a mistyped SKU or a product created for testing
+ * stayed in the catalogue for good, and an operator who clicked a button
+ * labelled Delete was told the opposite of what happened.
+ *
+ * **Refuses when the product appears in any inquiry.** An inquiry line records
+ * what a customer asked for and what was quoted; deleting the product out from
+ * under it would leave a row pointing at nothing, and the pipeline history is
+ * the accumulated commercial value of this system. Deactivation is the correct
+ * answer there, and the error says so rather than failing mutely.
+ */
+export async function purgeProduct(id: string): Promise<{ name: string; images: number }> {
+  const product = await Product.findById(id);
+  if (!product) throw ApiError.notFound('Product not found');
+
+  const [inInquiry, inList] = await Promise.all([
+    Inquiry.countDocuments({ 'items.product': id }),
+    InquiryList.countDocuments({ 'items.product': id }),
+  ]);
+
+  if (inInquiry > 0) {
+    throw ApiError.conflict(
+      `"${product.name}" appears in ${inInquiry} inquir${inInquiry === 1 ? 'y' : 'ies'} and cannot be ` +
+        'deleted — that history would be left pointing at nothing. Turn it off with the Active ' +
+        'toggle instead: it disappears from the storefront and the record stays intact.',
+    );
+  }
+
+  // A visitor's shortlist is not history; it is a basket in progress. Pulling
+  // the item out of it is kinder than refusing the delete forever.
+  if (inList > 0) {
+    await InquiryList.updateMany(
+      { 'items.product': id },
+      { $pull: { items: { product: new Types.ObjectId(id) } } },
+    );
+  }
+
+  /*
+   * Cloudinary before Mongo. If the storage call fails we still have the
+   * document and can retry; delete the document first and the public IDs are
+   * lost, leaving files nobody can find and nobody is paying attention to.
+   */
+  const publicIds = product.images.map((image) => image.publicId).filter(Boolean);
+  await Promise.all(publicIds.map((publicId) => deleteImage(publicId).catch(() => undefined)));
+
+  await product.deleteOne();
+
+  return { name: product.name, images: publicIds.length };
 }
 
 /* ------------------------------ Stock control ---------------------------- */
@@ -126,7 +213,7 @@ export async function adjustStock(id: string, input: StockAdjustmentInput): Prom
   }
 
   product.stock = next;
-  // The model's pre-save hook re-derives stockStatus from the new figure.
+  // The model's pre-save hook demotes `ready_stock` if this empties it.
   await product.save();
 
   return { product, previous, next };
@@ -168,7 +255,7 @@ export async function bulkUpdate(input: BulkProductInput): Promise<BulkResult> {
   const adjust = input.adjust;
   if (!adjust) throw ApiError.badRequest('A price adjustment needs an `adjust` block');
 
-  const products = await Product.find(filter).select('+costPrice');
+  const products = await Product.find(filter).select('+lastQuotedPrice +internalCost +supplierNotes +variants.price');
   let modified = 0;
 
   for (const product of products) {

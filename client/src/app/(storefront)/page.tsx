@@ -3,8 +3,10 @@ import { HeroSlider } from '@/components/home/hero';
 import { TrustStrip } from '@/components/home/trust-strip';
 import { BrandGrid, CategoryGrid } from '@/components/home/discovery';
 import { ArrivalsAndBestSellers, FeaturedCarousel } from '@/components/home/product-sections';
-import { Industries, RfqBanner, Testimonials, WhyChooseUs } from '@/components/home/marketing';
+import { Industries, Testimonials, WhyChooseUs } from '@/components/home/marketing';
+import { SourcingCTA } from '@/components/shared';
 import { ContactStrip } from '@/components/home/contact-strip';
+import { PromoStrip } from '@/components/home/promo-strip';
 import { JsonLd } from '@/components/shared/json-ld';
 import {
   getBanners,
@@ -13,6 +15,7 @@ import {
   getCategoryTree,
   getFeaturedProducts,
   getNewArrivals,
+  getTestimonials,
 } from '@/lib/api/catalog';
 import { buildMetadata, TARGET_KEYWORDS, localBusinessSchema, organizationSchema, websiteSchema } from '@/lib/seo';
 import { SITE } from '@/lib/constants';
@@ -30,15 +33,20 @@ export const metadata: Metadata = buildMetadata({
 
 export default async function HomePage(): Promise<JSX.Element> {
   // One parallel wave — a slow endpoint delays the page by its own latency,
-  // not the sum of all six.
-  const [banners, categories, brands, featured, newArrivals, bestSellers] = await Promise.all([
-    getBanners('hero'),
-    getCategoryTree(),
-    getBrands(true),
-    getFeaturedProducts(10),
-    getNewArrivals(8),
-    getBestSellers(8),
-  ]);
+  // not the sum of all seven.
+  const [banners, stripBanners, categories, brands, featured, newArrivals, bestSellers, testimonials] =
+    await Promise.all([
+      getBanners('hero'),
+      // The `strip` position was seeded and offered in the admin but never
+      // fetched, so any banner set to it was invisible.
+      getBanners('strip'),
+      getCategoryTree(),
+      getBrands(true),
+      getFeaturedProducts(10),
+      getNewArrivals(8),
+      getBestSellers(8),
+      getTestimonials(undefined, 6),
+    ]);
 
   return (
     <>
@@ -46,17 +54,18 @@ export default async function HomePage(): Promise<JSX.Element> {
 
       <HeroSlider banners={banners ?? []} />
       <TrustStrip />
+      <PromoStrip banners={stripBanners ?? []} />
       <CategoryGrid categories={categories ?? []} />
       <FeaturedCarousel products={featured?.items ?? []} />
       <BrandGrid brands={brands ?? []} />
-      <RfqBanner />
+      <SourcingCTA variant="band" />
       <ArrivalsAndBestSellers
         newArrivals={newArrivals?.items ?? []}
         bestSellers={bestSellers?.items ?? []}
       />
       <Industries />
       <WhyChooseUs />
-      <Testimonials />
+      <Testimonials items={testimonials ?? []} />
       <ContactStrip />
     </>
   );

@@ -1,5 +1,10 @@
 # Phase 7B — Quote builder and the remaining admin screens
 
+> **Superseded.** This document describes the site before the catalogue-only
+> pivot — it still refers to prices, carts, checkout, payments, orders or
+> customer accounts, none of which exist any more. Kept as build history.
+> See [`CATALOG-PIVOT.md`](./CATALOG-PIVOT.md) for the current model.
+
 17 files, 13 new routes. **The admin is complete at 19 routes.**
 
 | Route | What it does |

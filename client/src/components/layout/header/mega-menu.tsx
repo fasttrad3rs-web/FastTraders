@@ -44,7 +44,7 @@ export function MegaMenu(): JSX.Element {
               {mockCategories.map((category) => (
                 <li key={category.slug}>
                   <Link
-                    href={`/category/${category.slug}`}
+                    href={`/categories/${category.slug}`}
                     onMouseEnter={() => setActiveSlug(category.slug)}
                     onFocus={() => setActiveSlug(category.slug)}
                     className={cn(
@@ -72,7 +72,7 @@ export function MegaMenu(): JSX.Element {
                 {(active?.children ?? []).map((child) => (
                   <li key={child.slug}>
                     <Link
-                      href={`/category/${child.slug}`}
+                      href={`/categories/${child.slug}`}
                       className="block py-1 text-sm text-foreground transition-colors hover:text-brand-cyan"
                     >
                       {child.name}
@@ -82,7 +82,7 @@ export function MegaMenu(): JSX.Element {
                         {child.children.map((grandchild) => (
                           <li key={grandchild.slug}>
                             <Link
-                              href={`/category/${grandchild.slug}`}
+                              href={`/categories/${grandchild.slug}`}
                               className="block py-0.5 text-xs text-muted-foreground transition-colors hover:text-brand-cyan"
                             >
                               {grandchild.name}
@@ -120,7 +120,7 @@ export function MegaMenu(): JSX.Element {
                   Send your bill of materials and get one consolidated quote within a working day.
                 </p>
                 <Link
-                  href="/request-quote"
+                  href="/submit-inquiry"
                   className="mt-3 inline-flex h-8 items-center rounded-md bg-brand-cyan px-3 text-xs font-bold uppercase tracking-wide transition-colors hover:bg-white hover:text-brand-navy"
                 >
                   Request a quote

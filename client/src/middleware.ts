@@ -9,11 +9,12 @@ import { NextResponse, type NextRequest } from 'next/server';
  * admin API route is independently protected by `protect + restrictTo` on the
  * server, so a forged cookie gets a 403 from the API and an empty screen here.
  *
- * The point of this middleware is UX: send a signed-out visitor to /login
- * instead of rendering an admin shell that will fail every request.
+ * The point of this middleware is UX: send a signed-out visitor to the staff
+ * sign-in page instead of rendering an admin shell that fails every request.
  */
 
 const ACCESS_TOKEN_COOKIE = 'ft_access_token';
+const LOGIN_PATH = '/admin/login';
 const STAFF_ROLES = new Set(['admin', 'manager']);
 
 interface TokenPayload {
@@ -38,6 +39,10 @@ function decodePayload(token: string): TokenPayload | null {
 export function middleware(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
 
+  // The sign-in page is inside /admin, so it has to opt itself out or the
+  // redirect below would loop forever.
+  if (pathname === LOGIN_PATH) return NextResponse.next();
+
   const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const payload = token ? decodePayload(token) : null;
 
@@ -46,7 +51,7 @@ export function middleware(request: NextRequest): NextResponse {
 
   if (!payload || expired || !isStaff) {
     const login = request.nextUrl.clone();
-    login.pathname = '/login';
+    login.pathname = LOGIN_PATH;
     login.search = `?next=${encodeURIComponent(pathname + search)}`;
     return NextResponse.redirect(login);
   }

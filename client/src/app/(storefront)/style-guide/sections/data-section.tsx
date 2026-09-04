@@ -14,26 +14,37 @@ import {
 } from '@/components/ui/tabs';
 import { Breadcrumb, Pagination } from '@/components/ui/pagination';
 import { DataTable, type Column } from '@/components/ui/table';
-import { Badge, StockBadge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
+import { AvailabilityBadge } from '@/components/shared/availability-badge';
+import type { Availability } from '@/types';
 import { Button } from '@/components/ui/button';
 import { SectionHeading } from '@/components/ui/separator';
 import { mockProducts } from '@/lib/mock-data';
-import { formatPKR } from '@/lib/utils';
 
+/*
+ * `availability` is typed as `Availability`, not `string`.
+ *
+ * It used to be `string`, fed into `StockBadge` through an
+ * `as 'in_stock'` cast. `StockBadge` speaks the pre-pivot vocabulary
+ * (`in_stock` / `low_stock` / …) and this data carries the pivoted one
+ * (`ready_stock` / …), so the lookup inside it returned `undefined` and the
+ * destructure threw — crashing the prerender of this page. The cast is what
+ * hid it from `tsc`.
+ */
 interface Row extends Record<string, unknown> {
   sku: string;
   name: string;
   brand: string;
-  stock: string;
-  price: string;
+  availability: Availability;
+  sourcing: string;
 }
 
 const rows: Row[] = mockProducts.slice(0, 5).map((product) => ({
   sku: product.sku,
   name: product.name,
   brand: product.brand,
-  stock: product.stockStatus,
-  price: product.price ? formatPKR(product.price) : 'On request',
+  availability: product.availability,
+  sourcing: product.isMadeToOrder ? 'To order' : 'Stocked',
 }));
 
 const columns: Column<Row>[] = [
@@ -41,12 +52,12 @@ const columns: Column<Row>[] = [
   { key: 'name', header: 'Product', sortable: true },
   { key: 'brand', header: 'Brand', sortable: true },
   {
-    key: 'stock',
-    header: 'Stock',
+    key: 'availability',
+    header: 'Availability',
     align: 'center',
-    render: (row) => <StockBadge status={row.stock as 'in_stock'} />,
+    render: (row) => <AvailabilityBadge value={row.availability} size="sm" />,
   },
-  { key: 'price', header: 'Price', sortable: true, align: 'right' },
+  { key: 'sourcing', header: 'Sourcing', sortable: true, align: 'right' },
 ];
 
 export function DataSection(): JSX.Element {
@@ -171,8 +182,8 @@ export function DataSection(): JSX.Element {
             </p>
             <Breadcrumb
               items={[
-                { label: 'Switchgear & Protection', href: '/category/switchgear-protection' },
-                { label: 'Circuit Breakers', href: '/category/circuit-breakers' },
+                { label: 'Switchgear & Protection', href: '/categories/switchgear-protection' },
+                { label: 'Circuit Breakers', href: '/categories/circuit-breakers' },
                 { label: 'MCCB' },
               ]}
             />

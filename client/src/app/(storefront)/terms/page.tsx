@@ -21,18 +21,19 @@ export default function TermsPage(): JSX.Element {
           ],
         },
         {
-          heading: 'Orders',
+          heading: 'Inquiries',
           body: [
-            'An order placed on this site is an offer to buy. It is accepted when we confirm it — normally within one working day.',
-            'We may decline an order if the item is no longer available, if a price has been listed in error, or if we cannot verify the delivery details.',
-            'Prices are in Pakistani Rupees and include sales tax where applicable. Delivery is charged separately and shown before you confirm.',
+            'Nothing on this site is an offer to sell and nothing can be bought here. Sending an inquiry asks us for a quote; it commits neither side to anything.',
+            'We will normally call you back within one working day. A sourcing or import request may take one to two, because a supplier has to be checked first.',
+            'A sale is agreed separately — on the phone, on WhatsApp or at our counter — and is subject to the quotation terms below.',
           ],
         },
         {
           heading: 'Quotations',
           body: [
-            'A quotation is valid for the period stated on it, and for 15 days if no period is given.',
-            'Quoted prices are subject to stock availability at the time the order is confirmed. Imported items are quoted against the prevailing exchange rate and may be revised if it moves materially before the order is placed.',
+            'A quotation is valid for the period stated when we give it, and for 15 days if no period is given.',
+            'All quotes are in Pakistani Rupees and include sales tax where applicable, unless we say otherwise at the time.',
+            'Quoted amounts are subject to stock at the moment the order is confirmed. Imported items are quoted against the prevailing exchange rate and may be revised if it moves materially before you place the order.',
             'Delivery lead time is confirmed on receipt of a firm order.',
           ],
         },

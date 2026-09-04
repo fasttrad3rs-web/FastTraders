@@ -13,7 +13,7 @@ declare global {
       requestId?: string;
       /** Keys stripped by the NoSQL sanitiser, if any. */
       sanitizedKeys?: string[];
-      /** Guest cart session id, resolved by `attachSession`. */
+      /** Guest inquiry-list session id, resolved by `attachSession`. */
       sessionId?: string;
     }
   }

@@ -26,7 +26,13 @@ export function organizationSchema(): Record<string, unknown> {
     '@id': `${SITE.url}/#organization`,
     name: SITE.name,
     url: SITE.url,
-    logo: `${SITE.url}/brand/logo.svg`,
+    /*
+     * PNG, not the SVG. Google's Organization-logo guidance asks for
+     * .jpg/.png/.gif — an SVG here is silently ineligible for the rich
+     * result, which is the worst kind of SEO bug: nothing errors, the markup
+     * validates, and the logo just never appears in search.
+     */
+    logo: `${SITE.url}/brand/logo.png`,
     description: SITE.shortDescription,
     founder: { '@type': 'Person', name: 'Sharjeel Bin Ejaz' },
     email: CONTACT.email,
@@ -61,11 +67,24 @@ export function localBusinessSchema(): Record<string, unknown> {
     '@type': ['Store', 'ElectricalContractor'],
     '@id': `${SITE.url}/#localbusiness`,
     name: SITE.name,
-    image: `${SITE.url}/brand/logo.svg`,
+    /*
+     * 1200×630 rather than the logo. Google wants a real photo here at a
+     * usable width, and renders it in the local panel.
+     *
+     * TODO replace with actual photographs of the Grace Tower shopfront and
+     * counter once Sharjeel provides them — a picture of the premises earns
+     * far more trust in a local result than a logo does.
+     */
+    image: `${SITE.url}/brand/og-default.png`,
     url: SITE.url,
     telephone: CONTACT.landline,
     email: CONTACT.email,
-    priceRange: 'Rs.',
+    /*
+     * `priceRange` is deliberately omitted. Nothing on this site is priced,
+     * so any value would be a guess — and Google renders it verbatim in the
+     * knowledge panel, which would put a number in front of buyers that the
+     * shop never quoted.
+     */
     currenciesAccepted: 'PKR',
     paymentAccepted: 'Cash, Bank Transfer, Credit Card, JazzCash, Easypaisa',
     address: {

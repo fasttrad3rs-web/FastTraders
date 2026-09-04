@@ -1,24 +1,10 @@
 import { Schema } from 'mongoose';
-import { PROVINCES } from '../types/user.types';
-import type { Address, Seo } from '../types';
+import type { Seo } from '../types';
 
 /**
  * Reusable subdocument schemas.
  * `_id: false` everywhere — these are value objects, not entities.
  */
-
-export const addressSchema = new Schema<Address>(
-  {
-    label: { type: String, required: true, trim: true, maxlength: 40, default: 'Home' },
-    line1: { type: String, required: true, trim: true, maxlength: 200 },
-    line2: { type: String, trim: true, maxlength: 200 },
-    city: { type: String, required: true, trim: true, maxlength: 80 },
-    province: { type: String, required: true, enum: PROVINCES },
-    postalCode: { type: String, trim: true, maxlength: 10 },
-    isDefault: { type: Boolean, default: false },
-  },
-  { _id: false },
-);
 
 export const seoSchema = new Schema<Seo>(
   {
@@ -40,7 +26,7 @@ export const imageSchema = new Schema(
   { _id: false },
 );
 
-/** A Cloudinary-backed file reference (datasheets, RFQ attachments, invoices). */
+/** A Cloudinary-backed file reference (datasheets, RFQ attachments). */
 export const fileSchema = new Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 160 },
@@ -50,7 +36,7 @@ export const fileSchema = new Schema(
   { _id: false },
 );
 
-/** Contact block captured at checkout / RFQ time (guests included). */
+/** Contact block captured on an RFQ. Every enquirer is a guest. */
 export const customerDetailsSchema = new Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 120 },

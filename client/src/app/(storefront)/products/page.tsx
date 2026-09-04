@@ -5,7 +5,10 @@ import { CatalogView } from '@/components/catalog/catalog-view';
 import { JsonLd } from '@/components/shared/json-ld';
 import { getCategoryTree, getProducts, type ProductQueryParams } from '@/lib/api/catalog';
 import { breadcrumbSchema, buildMetadata, itemListSchema, TARGET_KEYWORDS } from '@/lib/seo';
-import { parseFilters } from '@/components/catalog/use-catalog-filters';
+// Imported from `filters`, not `use-catalog-filters`: the latter is a
+// `'use client'` module, and a Server Component importing from one receives a
+// client reference proxy rather than the function.
+import { parseFilters } from '@/components/catalog/filters';
 
 export const revalidate = 300;
 
@@ -56,8 +59,8 @@ export default async function ProductsPage({
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
           Industrial and electrical equipment from Terasaki, Schneider Electric, Mitsubishi, Fuji,
-          Hager, Autonics, IDEC, Pilz, WAGO and more. Priced items can be bought online; anything
-          quote-only goes to your inquiry list.
+          Hager, Autonics, IDEC, Pilz, WAGO and more. Add anything you need to your inquiry list and
+          we will come back with a price, or call us on +92 324 4234990 for a quote today.
         </p>
       </header>
 

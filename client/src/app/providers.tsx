@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/toast';
 import { AuthProvider } from '@/lib/auth-context';
-import { useCartStore } from '@/store/cart-store';
+import { useInquiryStore } from '@/store/inquiry-store';
 
 /**
  * Client provider tree. Kept out of `layout.tsx` so the root layout stays a
@@ -17,11 +17,11 @@ import { useCartStore } from '@/store/cart-store';
  * only after mount keeps the SSR badge (0) and the first client render in
  * agreement, avoiding a hydration mismatch.
  */
-function CartHydration({ children }: { children: ReactNode }): JSX.Element {
-  const setHydrated = useCartStore((state) => state.setHydrated);
+function InquiryHydration({ children }: { children: ReactNode }): JSX.Element {
+  const setHydrated = useInquiryStore((state) => state.setHydrated);
 
   useEffect(() => {
-    void useCartStore.persist.rehydrate();
+    void useInquiryStore.persist.rehydrate();
     setHydrated();
   }, [setHydrated]);
 
@@ -51,7 +51,7 @@ export function Providers({ children }: { children: ReactNode }): JSX.Element {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider delayDuration={200}>
-          <CartHydration>{children}</CartHydration>
+          <InquiryHydration>{children}</InquiryHydration>
           <Toaster />
         </TooltipProvider>
       </AuthProvider>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { FileText } from 'lucide-react';
+import { ChinaFlag } from '@/components/shared/china-flag';
 import { MegaMenu } from './mega-menu';
 
 /** Tier 3: the primary navigation band, navy with a cyan mega-menu launcher. */
@@ -31,8 +32,26 @@ export function NavBar(): JSX.Element {
           ))}
         </ul>
 
+        {/*
+          Two CTAs, deliberately different jobs. China sourcing is highlighted
+          because "we can get what we do not stock" is the claim most likely
+          to win a buyer who has already been told no somewhere else.
+        */}
         <Link
-          href="/request-quote"
+          href="/source-from-china"
+          className="flex h-12 items-center gap-2 bg-brand-cyan px-5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+        >
+          {/*
+            The flag replaces the magnifier rather than joining it. Two glyphs
+            plus three words in a 48px bar is clutter, and of the two the flag
+            is the one carrying information the label does not already give.
+          */}
+          <ChinaFlag className="h-4 w-6" />
+          Source From China
+        </Link>
+
+        <Link
+          href="/submit-inquiry"
           className="flex h-12 items-center gap-2 bg-white/10 px-5 text-sm font-bold uppercase tracking-wide text-brand-cyan transition-colors hover:bg-brand-cyan hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
         >
           <FileText className="size-4" aria-hidden />

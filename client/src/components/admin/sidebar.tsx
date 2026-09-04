@@ -11,15 +11,13 @@ import {
   Inbox,
   LayoutDashboard,
   Mail,
-  Package,
   ScrollText,
   Settings,
   Star,
   Tags,
-  Ticket,
-  Users,
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/tooltip';
+import { Logo } from '@/components/layout/logo';
 import { cn } from '@/lib/utils';
 
 /**
@@ -29,17 +27,15 @@ import { cn } from '@/lib/utils';
  * Quotations, and burying those in a 15-item list would cost him time.
  */
 
-const GROUPS: { label: string; items: { href: string; label: string; Icon: typeof Package }[] }[] = [
+const GROUPS: { label: string; items: { href: string; label: string; Icon: typeof Boxes }[] }[] = [
   {
     label: 'Overview',
     items: [{ href: '/admin', label: 'Dashboard', Icon: LayoutDashboard }],
   },
   {
-    label: 'Sell',
+    label: 'Pipeline',
     items: [
-      { href: '/admin/orders', label: 'Orders', Icon: Package },
-      { href: '/admin/quotations', label: 'Quotations', Icon: FileText },
-      { href: '/admin/customers', label: 'Customers', Icon: Users },
+      { href: '/admin/inquiries', label: 'Inquiries', Icon: FileText },
     ],
   },
   {
@@ -54,9 +50,8 @@ const GROUPS: { label: string; items: { href: string; label: string; Icon: typeo
     label: 'Marketing',
     items: [
       { href: '/admin/banners', label: 'Banners', Icon: ImageIcon },
-      { href: '/admin/coupons', label: 'Coupons', Icon: Ticket },
       { href: '/admin/newsletter', label: 'Newsletter', Icon: Mail },
-      { href: '/admin/reviews', label: 'Reviews', Icon: Star },
+      { href: '/admin/testimonials', label: 'Testimonials', Icon: Star },
     ],
   },
   {
@@ -91,16 +86,14 @@ export function AdminSidebar({
       )}
     >
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 px-3">
-        <Link href="/admin" className="flex min-w-0 items-center gap-2">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded bg-brand-cyan text-xs font-extrabold text-white">
-            FT
-          </span>
-          {!collapsed ? (
-            <span className="truncate font-heading text-sm font-bold uppercase tracking-tight">
-              Fast Traders
-            </span>
-          ) : null}
-        </Link>
+        {/* Collapsed rail has room for the mark only. */}
+        <Logo
+          href="/admin"
+          variant="light"
+          lockup={collapsed ? 'mark' : 'horizontal'}
+          height={collapsed ? 30 : 26}
+          showStrapline={false}
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto py-3">

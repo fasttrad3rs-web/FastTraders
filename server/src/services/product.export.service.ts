@@ -19,14 +19,14 @@ interface PopulatedProduct {
   category?: { slug?: string } | null;
   subCategory?: { slug?: string } | null;
   brand?: { slug?: string } | null;
-  pricingMode: string;
-  price?: number;
-  comparePrice?: number;
-  costPrice?: number;
-  taxRate: number;
+  lastQuotedPrice?: number;
+  internalCost?: number;
+  supplierNotes?: string;
   stock: number;
   lowStockThreshold: number;
-  stockStatus: string;
+  availability: string;
+  leadTime?: string;
+  isImportItem: boolean;
   unit: string;
   minOrderQty: number;
   tags: string[];
@@ -34,8 +34,6 @@ interface PopulatedProduct {
   specifications: { key: string; value: string }[];
   isFeatured: boolean;
   isActive: boolean;
-  ratingAvg: number;
-  reviewCount: number;
   salesCount: number;
   createdAt: Date;
 }
@@ -56,9 +54,10 @@ export async function exportProducts(
     ...(filters.brand ? { brand: filters.brand } : {}),
   };
 
-  // `+costPrice` is opt-in: it is `select: false` so it can never leak publicly.
+  // Every internal figure is `select: false`, so an admin read has to name
+  // them. This is the export Sharjeel opens in Excel; nothing public does it.
   const products = await Product.find(query)
-    .select('+costPrice')
+    .select('+lastQuotedPrice +internalCost +supplierNotes +variants.price')
     .populate({ path: 'category', select: 'slug' })
     .populate({ path: 'subCategory', select: 'slug' })
     .populate({ path: 'brand', select: 'slug' })
@@ -72,11 +71,12 @@ export async function exportProducts(
     categorySlug: product.category?.slug ?? '',
     subCategorySlug: product.subCategory?.slug ?? '',
     brandSlug: product.brand?.slug ?? '',
-    pricingMode: product.pricingMode,
-    price: product.price ?? '',
-    comparePrice: product.comparePrice ?? '',
-    costPrice: product.costPrice ?? '',
-    taxRate: product.taxRate,
+    lastQuotedPrice: product.lastQuotedPrice ?? '',
+    internalCost: product.internalCost ?? '',
+    supplierNotes: product.supplierNotes ?? '',
+    availability: product.availability,
+    leadTime: product.leadTime ?? '',
+    isImportItem: product.isImportItem ? 'yes' : 'no',
     stock: product.stock,
     lowStockThreshold: product.lowStockThreshold,
     unit: product.unit,
@@ -91,9 +91,6 @@ export async function exportProducts(
     isFeatured: product.isFeatured ? 'yes' : 'no',
     isActive: product.isActive ? 'yes' : 'no',
     // Read-only columns, ignored by the importer.
-    stockStatus: product.stockStatus,
-    ratingAvg: product.ratingAvg,
-    reviewCount: product.reviewCount,
     salesCount: product.salesCount,
     slug: product.slug,
     createdAt: product.createdAt.toISOString().slice(0, 10),

@@ -4,7 +4,8 @@ import { useScrollPosition } from '@/hooks/use-scroll-position';
 import { cn } from '@/lib/utils';
 import { Logo } from '../logo';
 import { WhatsAppButton } from '../whatsapp-button';
-import { HeaderActions } from './cart-buttons';
+import { HeaderActions } from './header-actions';
+import { HeaderCallBlock } from './call-block';
 import { MobileDrawer, MobileSearch } from './mobile-nav';
 import { NavBar } from './nav-bar';
 import { SearchBar } from './search-bar';
@@ -36,7 +37,7 @@ export function Header(): JSX.Element {
       >
         <div className="container flex h-16 items-center gap-3 lg:h-20 lg:gap-6">
           <MobileDrawer />
-          <Logo />
+          <Logo priority height={44} />
 
           <div className="hidden min-w-0 flex-1 lg:block">
             <SearchBar />
@@ -44,8 +45,9 @@ export function Header(): JSX.Element {
 
           <div className="ml-auto flex items-center gap-1 lg:gap-3">
             <MobileSearch />
-            <HeaderActions />
+            <HeaderCallBlock />
             <WhatsAppButton className="hidden sm:inline-flex" />
+            <HeaderActions />
           </div>
         </div>
       </div>

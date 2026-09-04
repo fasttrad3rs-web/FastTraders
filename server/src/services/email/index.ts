@@ -1,80 +1,43 @@
 import { env } from '../../config/env';
 import { dispatchEmail } from './mailer';
+import { passwordChangedEmail, resetPasswordEmail } from './templates.auth';
 import {
-  passwordChangedEmail,
-  resetPasswordEmail,
-  verifyEmail,
-  welcomeEmail,
-} from './templates.auth';
-import {
+  adminInquiryUrl,
   contactAlertEmail,
-  newOrderAlertEmail,
-  newQuotationAlertEmail,
-  orderConfirmationEmail,
-  orderStatusEmail,
-  quotationReadyEmail,
-  quotationReceivedEmail,
-  type OrderEmailData,
-  type QuotationEmailData,
-} from './templates.commerce';
+  inquiryReceivedEmail,
+  newInquiryAlertEmail,
+} from './templates.notifications';
+import type { InquiryDocument } from '../../models';
 
 /**
  * Typed façade over the mail templates.
  * Controllers call these and move on — nothing here blocks a response.
+ *
+ * Four templates, down from thirteen. The nine that went belonged to an order
+ * lifecycle and a customer account that no longer exist.
  */
 export const email = {
-  welcome: (to: string, name: string): void =>
-    dispatchEmail({ to, content: welcomeEmail(name) }),
-
-  verifyAddress: (to: string, name: string, token: string): void =>
-    dispatchEmail({ to, content: verifyEmail(name, token) }),
-
   resetPassword: (to: string, name: string, token: string): void =>
     dispatchEmail({ to, content: resetPasswordEmail(name, token) }),
 
   passwordChanged: (to: string, name: string): void =>
     dispatchEmail({ to, content: passwordChangedEmail(name) }),
 
-  orderConfirmation: (to: string, data: OrderEmailData): void =>
-    dispatchEmail({ to, content: orderConfirmationEmail(data) }),
-
-  orderStatus: (
-    to: string,
-    data: {
-      orderNumber: string;
-      customerName: string;
-      status: string;
-      note?: string;
-      trackingNumber?: string;
-      courier?: string;
-    },
-  ): void => dispatchEmail({ to, content: orderStatusEmail(data) }),
-
-  newOrderAlert: (
-    data: OrderEmailData & { customerPhone: string; customerEmail: string },
-  ): void =>
+  /**
+   * The one that matters. Every new inquiry lands in the shop inbox with the
+   * customer's number one tap away, and `replyTo` set so hitting reply in any
+   * mail client goes to the buyer rather than back to us.
+   */
+  newInquiryAlert: (inquiry: InquiryDocument): void =>
     dispatchEmail({
       to: env.ADMIN_EMAIL,
-      content: newOrderAlertEmail(data),
-      replyTo: data.customerEmail,
+      content: newInquiryAlertEmail(inquiry, adminInquiryUrl(inquiry._id.toHexString())),
+      ...(inquiry.customer.email ? { replyTo: inquiry.customer.email } : {}),
     }),
 
-  quotationReceived: (to: string, data: QuotationEmailData): void =>
-    dispatchEmail({ to, content: quotationReceivedEmail(data) }),
-
-  quotationReady: (
-    to: string,
-    data: QuotationEmailData & { total: number; validUntil?: string },
-  ): void => dispatchEmail({ to, content: quotationReadyEmail(data) }),
-
-  newQuotationAlert: (
-    data: QuotationEmailData & { customerPhone: string; customerEmail: string; company?: string },
-  ): void =>
-    dispatchEmail({
-      to: env.ADMIN_EMAIL,
-      content: newQuotationAlertEmail(data),
-      replyTo: data.customerEmail,
-    }),
+  /** Only called when the customer actually gave an address. */
+  inquiryReceived: (to: string, inquiry: InquiryDocument): void =>
+    dispatchEmail({ to, content: inquiryReceivedEmail(inquiry) }),
 
   contactAlert: (data: {
     name: string;
@@ -89,4 +52,3 @@ export const email = {
 
 export { sendEmail, dispatchEmail, verifyMailer, type MailAttachment, type SendOptions } from './mailer';
 export type { EmailContent } from './templates.auth';
-export type { OrderEmailData, QuotationEmailData } from './templates.commerce';

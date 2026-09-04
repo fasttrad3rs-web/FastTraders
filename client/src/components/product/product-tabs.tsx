@@ -1,11 +1,14 @@
 import { Download, FileText, Truck } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/ui/feedback';
-import { Rating } from '@/components/ui/commerce';
 import type { Product, Specification } from '@/types';
 
 /**
- * Description · Specifications · Datasheets · Reviews · Shipping & Returns.
+ * Description · Specifications · Datasheets · Delivery & Warranty.
+ *
+ * No reviews tab. Ratings would have to come from testimonials an admin
+ * typed in, which is not feedback from verified buyers — showing it as one
+ * would be inventing a trust signal.
  *
  * Every panel is `forceMount`ed. Radix unmounts inactive tabs by default,
  * which would keep the specification table out of the server-rendered HTML —
@@ -35,8 +38,7 @@ export function ProductTabs({ product }: { product: Product }): JSX.Element {
         <TabsTrigger value="description">Description</TabsTrigger>
         <TabsTrigger value="specs">Specifications</TabsTrigger>
         <TabsTrigger value="datasheets">Datasheets</TabsTrigger>
-        <TabsTrigger value="reviews">Reviews</TabsTrigger>
-        <TabsTrigger value="shipping">Shipping &amp; Returns</TabsTrigger>
+        <TabsTrigger value="shipping">Delivery &amp; Warranty</TabsTrigger>
       </TabsList>
 
       <TabsContent value="description" forceMount>
@@ -101,30 +103,6 @@ export function ProductTabs({ product }: { product: Product }): JSX.Element {
         )}
       </TabsContent>
 
-      <TabsContent value="reviews" forceMount>
-        {product.reviewCount === 0 ? (
-          <EmptyState
-            title="No reviews yet"
-            description="Reviews appear here once a verified customer leaves one."
-          />
-        ) : (
-          <div className="max-w-2xl rounded-lg border border-border bg-white p-6">
-            <div className="flex items-center gap-4">
-              <span className="font-heading text-4xl font-extrabold text-brand-navy">
-                {product.ratingAvg.toFixed(1)}
-              </span>
-              <div>
-                <Rating value={product.ratingAvg} />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Based on {product.reviewCount} verified review
-                  {product.reviewCount === 1 ? '' : 's'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </TabsContent>
-
       <TabsContent value="shipping" forceMount>
         <div className="max-w-2xl space-y-4 text-sm text-muted-foreground">
           <div className="flex gap-3">
@@ -132,9 +110,9 @@ export function ProductTabs({ product }: { product: Product }): JSX.Element {
             <div>
               <p className="font-semibold text-brand-navy">Delivery</p>
               <p className="mt-1">
-                Lahore 1–2 working days, Punjab 2–4, rest of Pakistan 3–6. Free delivery applies
-                above the thresholds shown at checkout. Same-day collection is available from our
-                counter at Grace Tower, Bull Road.
+                Lahore 1–2 working days, Punjab 2–4, rest of Pakistan 3–6. Delivery is confirmed
+                with your quote, and larger orders often carry it free. Same-day collection is
+                available from our counter at Grace Tower, Bull Road.
               </p>
             </div>
           </div>

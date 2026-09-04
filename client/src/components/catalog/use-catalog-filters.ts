@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { ProductQueryParams } from '@/lib/api/catalog';
+import { FILTER_KEYS, parseFilters, type CatalogFilters } from './filters';
 
 /**
  * Filter state lives in the URL, not in React state.
@@ -11,47 +11,13 @@ import type { ProductQueryParams } from '@/lib/api/catalog';
  * friendly — which matters when a buyer sends a colleague "the 250 A MCCBs we
  * looked at". It also means the server component and the client query read
  * from the same source.
+ *
+ * The parser itself lives in `./filters` with no `'use client'` directive, so
+ * the `/products` Server Component can call it too. See the note there.
  */
 
-export type SortOption = 'newest' | 'price_asc' | 'price_desc' | 'popular' | 'name';
-export type LayoutMode = 'grid' | 'list';
-
-export interface CatalogFilters extends ProductQueryParams {
-  page: number;
-  sort: SortOption;
-}
-
-const SORTS: SortOption[] = ['newest', 'price_asc', 'price_desc', 'popular', 'name'];
-
-/** Parse the current search params into a typed query object. */
-export function parseFilters(params: URLSearchParams): CatalogFilters {
-  const number = (key: string): number | undefined => {
-    const raw = params.get(key);
-    if (raw === null || raw === '') return undefined;
-    const value = Number(raw);
-    return Number.isFinite(value) ? value : undefined;
-  };
-
-  const sort = params.get('sort');
-  const pricingMode = params.get('pricingMode');
-
-  return {
-    page: number('page') ?? 1,
-    limit: number('limit') ?? 24,
-    sort: SORTS.includes(sort as SortOption) ? (sort as SortOption) : 'newest',
-    ...(params.get('category') ? { category: params.get('category') as string } : {}),
-    ...(params.get('brand') ? { brand: params.get('brand') as string } : {}),
-    ...(number('minPrice') !== undefined ? { minPrice: number('minPrice') } : {}),
-    ...(number('maxPrice') !== undefined ? { maxPrice: number('maxPrice') } : {}),
-    ...(params.get('inStock') === 'true' ? { inStock: true } : {}),
-    ...(pricingMode === 'retail' || pricingMode === 'quote' || pricingMode === 'both'
-      ? { pricingMode }
-      : {}),
-    ...(params.get('tags') ? { tags: params.get('tags') as string } : {}),
-    ...(params.get('search') ? { search: params.get('search') as string } : {}),
-    ...(params.get('specs') ? { specs: params.get('specs') as string } : {}),
-  };
-}
+export type { CatalogFilters, LayoutMode, SortOption } from './filters';
+export { SORT_LABELS, SORTS, parseFilters } from './filters';
 
 export interface CatalogFilterApi {
   filters: CatalogFilters;
@@ -64,8 +30,6 @@ export interface CatalogFilterApi {
   clearAll: () => void;
   activeCount: number;
 }
-
-const FILTER_KEYS = ['category', 'brand', 'minPrice', 'maxPrice', 'inStock', 'pricingMode', 'tags', 'specs'];
 
 export function useCatalogFilters(): CatalogFilterApi {
   const router = useRouter();

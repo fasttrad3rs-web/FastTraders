@@ -1,22 +1,26 @@
 import type { Request, Response } from 'express';
+import type { UserRole } from '../types';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { REFRESH_TOKEN_COOKIE } from '../middleware/auth';
 import { User } from '../models';
 import { email } from '../services/email';
 import * as authService from '../services/auth.service';
-import { mergeGuestCarts } from '../services/cart.service';
 import { recordAudit } from '../services/audit.service';
-import { readSessionId } from '../services/session.service';
 import { ApiError } from '../utils/ApiError';
-import { sendCreated, sendSuccess } from '../utils/ApiResponse';
-import { clearAuthCookies, clearSessionCookie, setAuthCookies } from '../utils/cookies';
-import type {
-  ChangePasswordInput,
-  LoginInput,
-  RegisterInput,
-  UpdateProfileInput,
-} from '../validators';
+import { sendSuccess } from '../utils/ApiResponse';
+import { clearAuthCookies, setAuthCookies } from '../utils/cookies';
+import type { ChangePasswordInput, LoginInput } from '../validators';
+
+/**
+ * Staff authentication.
+ *
+ * There is no registration, no profile editing and no self-service reset —
+ * every account is minted by an admin through `POST /admin/users`.
+ */
+
+/** The only roles allowed to hold a session. */
+const STAFF_ROLES: readonly UserRole[] = ['admin', 'manager'];
 
 /** Read the refresh token from its httpOnly cookie, falling back to the body. */
 function extractRefreshToken(req: Request): string {
@@ -39,51 +43,26 @@ function verifyRefreshToken(token: string): string {
   return payload.sub;
 }
 
-/* ------------------------------- Register -------------------------------- */
-
-export async function register(req: Request, res: Response): Promise<void> {
-  const input = req.body as RegisterInput;
-
-  if (await User.exists({ email: input.email })) {
-    throw ApiError.conflict('An account with this email already exists');
-  }
-
-  const user = await User.create({
-    name: input.name,
-    email: input.email,
-    phone: input.phone,
-    passwordHash: input.password,
-    ...(input.companyName ? { companyName: input.companyName } : {}),
-  });
-
-  const verifyToken = await authService.createEmailVerifyToken(user);
-  email.welcome(user.email, user.name);
-  email.verifyAddress(user.email, user.name, verifyToken);
-
-  const tokens = await authService.issueTokens(user);
-  setAuthCookies(res, tokens);
-  await mergeGuestCarts(readSessionId(req), user._id.toString());
-  clearSessionCookie(res);
-
-  sendCreated(
-    res,
-    { user: authService.toPublicUser(user), accessToken: tokens.accessToken },
-    'Account created. Please check your email to verify your address.',
-  );
-}
-
-/* --------------------------------- Login --------------------------------- */
-
 export async function login(req: Request, res: Response): Promise<void> {
   const { email: address, password } = req.body as LoginInput;
 
   const user = await authService.authenticate(address, password);
+
+  /*
+   * Post-verification role check. The `role` enum no longer admits
+   * `customer`, so this should be unreachable — which is exactly why it is
+   * here: a row left behind by the old schema would still authenticate, and
+   * the failure mode would be a stranger holding a valid staff cookie.
+   * The message is deliberately the same one a wrong password gets.
+   */
+  if (!STAFF_ROLES.includes(user.role)) {
+    throw ApiError.unauthorized('Incorrect email or password');
+  }
+
   const tokens = await authService.issueTokens(user);
   setAuthCookies(res, tokens);
 
-  // Carry an anonymous cart into the account, then retire the guest cookie.
-  await mergeGuestCarts(readSessionId(req), user._id.toString());
-  clearSessionCookie(res);
+  recordAudit({ req, action: 'login', entity: 'User', entityId: user._id.toString() });
 
   sendSuccess(
     res,
@@ -127,28 +106,13 @@ export async function logout(req: Request, res: Response): Promise<void> {
   sendSuccess(res, null, 'Signed out');
 }
 
-/* ---------------------------------- Me ----------------------------------- */
+/* ------------------------- Current user (staff) --------------------------- */
 
 export async function getMe(req: Request, res: Response): Promise<void> {
   const user = await User.findById(req.user?.id);
   if (!user) throw ApiError.notFound('Account not found');
 
   sendSuccess(res, authService.toPublicUser(user), 'Current user');
-}
-
-export async function updateMe(req: Request, res: Response): Promise<void> {
-  const input = req.body as UpdateProfileInput;
-
-  const user = await User.findById(req.user?.id);
-  if (!user) throw ApiError.notFound('Account not found');
-
-  if (input.name !== undefined) user.name = input.name;
-  if (input.phone !== undefined) user.phone = input.phone;
-  if (input.companyName !== undefined) user.companyName = input.companyName ?? undefined;
-  if (input.ntn !== undefined) user.ntn = input.ntn ?? undefined;
-
-  await user.save();
-  sendSuccess(res, authService.toPublicUser(user), 'Profile updated');
 }
 
 export async function updatePassword(req: Request, res: Response): Promise<void> {

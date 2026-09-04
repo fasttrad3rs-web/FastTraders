@@ -1,9 +1,13 @@
 import type { Types } from 'mongoose';
-import { Order, Product, User } from '../models';
+import { Inquiry, Product } from '../models';
+import { formatPakistaniPhone } from '../utils/phone';
 
 /**
- * Operational reports. Each returns a flat row set so the same data can be
- * rendered as JSON in the admin UI or streamed out as CSV/XLSX.
+ * Operational reports for a catalogue-only business.
+ *
+ * "Sales" is replaced by "inquiries": there is no order collection and no
+ * written quotation, so the measurable funnel is inquiries in, how many were
+ * quoted on the phone, and how many were won.
  */
 
 export interface ReportResult<T> {
@@ -14,68 +18,75 @@ export interface ReportResult<T> {
   rows: T[];
 }
 
-const REVENUE_MATCH = { orderStatus: { $nin: ['cancelled', 'returned'] } } as const;
-
 function rangeMatch(from?: Date, to?: Date): Record<string, unknown> {
   if (!from && !to) return {};
-  return {
-    createdAt: {
-      ...(from ? { $gte: from } : {}),
-      ...(to ? { $lte: to } : {}),
-    },
-  };
+  return { createdAt: { ...(from ? { $gte: from } : {}), ...(to ? { $lte: to } : {}) } };
 }
 
-/* ------------------------------ Sales report ----------------------------- */
+/* ---------------------------- Inquiry report ----------------------------- */
 
-export interface SalesRow {
-  orderNumber: string;
+export interface InquiryRow {
+  inquiryNumber: string;
   date: string;
+  type: string;
   customer: string;
+  phone: string;
+  company: string;
   city: string;
-  items: number;
-  subtotal: number;
-  discount: number;
-  tax: number;
-  shipping: number;
-  total: number;
-  paymentMethod: string;
-  paymentStatus: string;
-  orderStatus: string;
+  lines: number;
+  units: number;
+  status: string;
+  priority: string;
+  quotedAmount: number | '';
+  lostReason: string;
 }
 
-export async function salesReport(from?: Date, to?: Date): Promise<ReportResult<SalesRow>> {
-  const filter = { ...REVENUE_MATCH, ...rangeMatch(from, to) };
-  const orders = await Order.find(filter).sort({ createdAt: 1 }).lean();
+const WON_STATUSES = ['won'];
 
-  const rows: SalesRow[] = orders.map((order) => ({
-    orderNumber: order.orderNumber,
-    date: order.createdAt.toISOString().slice(0, 10),
-    customer: order.customer.name,
-    city: order.shippingAddress.city,
-    items: order.items.reduce((sum, item) => sum + item.qty, 0),
-    subtotal: order.subtotal,
-    discount: order.discount,
-    tax: order.taxAmount,
-    shipping: order.shippingCost,
-    total: order.total,
-    paymentMethod: order.paymentMethod,
-    paymentStatus: order.paymentStatus,
-    orderStatus: order.orderStatus,
+export async function inquiryReport(from?: Date, to?: Date): Promise<ReportResult<InquiryRow>> {
+  const inquiries = await Inquiry.find(rangeMatch(from, to)).sort({ createdAt: 1 }).lean();
+
+  const rows: InquiryRow[] = inquiries.map((inquiry) => ({
+    inquiryNumber: inquiry.inquiryNumber,
+    date: inquiry.createdAt.toISOString().slice(0, 10),
+    type: inquiry.type,
+    customer: inquiry.customer.name,
+    phone: formatPakistaniPhone(inquiry.customer.phone),
+    company: inquiry.customer.company ?? '',
+    city: inquiry.customer.city ?? '',
+    lines: inquiry.items.length,
+    units: inquiry.items.reduce((sum, item) => sum + item.qty, 0),
+    status: inquiry.status,
+    priority: inquiry.priority,
+    quotedAmount: inquiry.internalQuotedAmount ?? '',
+    lostReason: inquiry.lostReason ?? '',
   }));
 
-  const revenue = rows.reduce((sum, row) => sum + row.total, 0);
+  const won = rows.filter((row) => WON_STATUSES.includes(row.status));
+  /*
+   * Pipeline is the sum of what was quoted verbally, which only exists where
+   * somebody typed the figure back in after the call. It is an indication,
+   * not a ledger, and the summary label says so.
+   */
+  const pipeline = rows.reduce(
+    (sum, row) => sum + (typeof row.quotedAmount === 'number' ? row.quotedAmount : 0),
+    0,
+  );
+  const quoted = rows.filter((row) => typeof row.quotedAmount === 'number');
 
   return {
-    title: 'Sales report',
+    title: 'Inquiry report',
     generatedAt: new Date().toISOString(),
     range: { from: from?.toISOString() ?? null, to: to?.toISOString() ?? null },
     summary: {
-      orders: rows.length,
-      revenue: Math.round(revenue),
-      averageOrderValue: rows.length ? Math.round(revenue / rows.length) : 0,
-      unitsSold: rows.reduce((sum, row) => sum + row.items, 0),
-      totalDiscount: Math.round(rows.reduce((sum, row) => sum + row.discount, 0)),
+      inquiries: rows.length,
+      quoted: quoted.length,
+      won: won.length,
+      lost: rows.filter((row) => row.status === 'lost').length,
+      noResponse: rows.filter((row) => row.status === 'no_response').length,
+      winRate: rows.length ? `${Math.round((won.length / rows.length) * 1000) / 10}%` : '0%',
+      pipelineValueQuoted: Math.round(pipeline),
+      averageQuote: quoted.length ? Math.round(pipeline / quoted.length) : 0,
     },
     rows,
   };
@@ -88,56 +99,64 @@ export interface InventoryRow {
   name: string;
   brand: string;
   category: string;
-  pricingMode: string;
   stock: number;
   lowStockThreshold: number;
-  stockStatus: string;
+  availability: string;
   unit: string;
-  price: number | '';
-  costPrice: number | '';
-  /** stock × costPrice — what is sitting on the shelf. */
+  isImportItem: string;
+  internalCost: number | '';
+  lastQuotedPrice: number | '';
   stockValue: number;
-  salesCount: number;
+  timesInquired: number;
 }
 
 interface PopulatedProduct {
+  _id: Types.ObjectId;
   sku: string;
   name: string;
   brand?: { name?: string } | null;
   category?: { name?: string } | null;
-  pricingMode: string;
   stock: number;
   lowStockThreshold: number;
-  stockStatus: string;
+  availability: string;
   unit: string;
-  price?: number;
-  costPrice?: number;
-  salesCount: number;
+  isImportItem?: boolean;
+  lastQuotedPrice?: number;
+  internalCost?: number;
 }
 
 export async function inventoryReport(): Promise<ReportResult<InventoryRow>> {
-  // `+costPrice` is required: it is `select: false` for public safety.
-  const products = await Product.find({})
-    .select('+costPrice')
-    .populate({ path: 'brand', select: 'name' })
-    .populate({ path: 'category', select: 'name' })
-    .sort({ stock: 1, name: 1 })
-    .lean<PopulatedProduct[]>();
+  // The internal figures are `select: false` so they cannot leak publicly.
+  // This report is admin-only and is the whole reason they exist.
+  const [products, demand] = await Promise.all([
+    Product.find({})
+      .select('+lastQuotedPrice +internalCost +supplierNotes +variants.price')
+      .populate({ path: 'brand', select: 'name' })
+      .populate({ path: 'category', select: 'name' })
+      .sort({ stock: 1, name: 1 })
+      .lean<PopulatedProduct[]>(),
+    Inquiry.aggregate<{ _id: Types.ObjectId; count: number }>([
+      { $unwind: '$items' },
+      { $group: { _id: '$items.product', count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const inquiredCount = new Map(demand.map((row) => [String(row._id), row.count]));
 
   const rows: InventoryRow[] = products.map((product) => ({
     sku: product.sku,
     name: product.name,
     brand: product.brand?.name ?? '',
     category: product.category?.name ?? '',
-    pricingMode: product.pricingMode,
     stock: product.stock,
     lowStockThreshold: product.lowStockThreshold,
-    stockStatus: product.stockStatus,
+    availability: product.availability,
     unit: product.unit,
-    price: product.price ?? '',
-    costPrice: product.costPrice ?? '',
-    stockValue: Math.round(product.stock * (product.costPrice ?? 0)),
-    salesCount: product.salesCount,
+    isImportItem: product.isImportItem ? 'yes' : 'no',
+    internalCost: product.internalCost ?? '',
+    lastQuotedPrice: product.lastQuotedPrice ?? '',
+    stockValue: Math.round(product.stock * (product.internalCost ?? 0)),
+    timesInquired: inquiredCount.get(product._id.toString()) ?? 0,
   }));
 
   return {
@@ -146,8 +165,9 @@ export async function inventoryReport(): Promise<ReportResult<InventoryRow>> {
     range: { from: null, to: null },
     summary: {
       products: rows.length,
-      outOfStock: rows.filter((row) => row.stock <= 0).length,
+      outOfStock: rows.filter((row) => row.stock <= 0 && row.isImportItem === 'no').length,
       lowStock: rows.filter((row) => row.stock > 0 && row.stock <= row.lowStockThreshold).length,
+      imported: rows.filter((row) => row.isImportItem === 'yes').length,
       totalStockValue: rows.reduce((sum, row) => sum + row.stockValue, 0),
     },
     rows,
@@ -158,67 +178,75 @@ export async function inventoryReport(): Promise<ReportResult<InventoryRow>> {
 
 export interface CustomerRow {
   name: string;
-  email: string;
   phone: string;
+  email: string;
   company: string;
-  joined: string;
-  orders: number;
-  lifetimeValue: number;
-  lastOrder: string;
+  city: string;
+  inquiries: number;
+  quotedValue: number;
+  won: number;
+  lastInquiry: string;
 }
 
+/**
+ * Built from inquiries, not user accounts — nobody registers, so the customer
+ * list *is* the inquiry history.
+ *
+ * Grouped on **phone**, not email. Email is optional here, so grouping on it
+ * would collapse every phone-only buyer into one row keyed on null. The phone
+ * number is normalised to +92XXXXXXXXXX on the way in precisely so that this
+ * grouping holds when the same man types 0300 one week and +92 300 the next.
+ */
 export async function customerReport(from?: Date, to?: Date): Promise<ReportResult<CustomerRow>> {
-  const users = await User.find({ role: 'customer', ...rangeMatch(from, to) })
-    .sort({ createdAt: -1 })
-    .lean();
-
-  const totals = await Order.aggregate<{
-    _id: Types.ObjectId | null;
-    orders: number;
-    value: number;
+  const grouped = await Inquiry.aggregate<{
+    _id: string;
+    name: string;
+    email?: string;
+    company?: string;
+    city?: string;
+    inquiries: number;
+    quotedValue: number;
+    won: number;
     last: Date;
   }>([
-    { $match: { ...REVENUE_MATCH, user: { $ne: null } } },
+    { $match: rangeMatch(from, to) },
     {
       $group: {
-        _id: '$user',
-        orders: { $sum: 1 },
-        value: { $sum: '$total' },
+        _id: '$customer.phone',
+        name: { $last: '$customer.name' },
+        email: { $last: '$customer.email' },
+        company: { $last: '$customer.company' },
+        city: { $last: '$customer.city' },
+        inquiries: { $sum: 1 },
+        quotedValue: { $sum: { $ifNull: ['$internalQuotedAmount', 0] } },
+        won: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
         last: { $max: '$createdAt' },
       },
     },
+    { $sort: { inquiries: -1 } },
   ]);
 
-  const byUser = new Map(totals.filter((row) => row._id).map((row) => [String(row._id), row]));
-
-  const rows: CustomerRow[] = users.map((user) => {
-    const stats = byUser.get(user._id.toString());
-    return {
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      company: user.companyName ?? '',
-      joined: user.createdAt.toISOString().slice(0, 10),
-      orders: stats?.orders ?? 0,
-      lifetimeValue: Math.round(stats?.value ?? 0),
-      lastOrder: stats?.last ? stats.last.toISOString().slice(0, 10) : '',
-    };
-  });
-
-  const withOrders = rows.filter((row) => row.orders > 0);
+  const rows: CustomerRow[] = grouped.map((row) => ({
+    name: row.name,
+    phone: formatPakistaniPhone(row._id),
+    email: row.email ?? '',
+    company: row.company ?? '',
+    city: row.city ?? '',
+    inquiries: row.inquiries,
+    quotedValue: Math.round(row.quotedValue),
+    won: row.won,
+    lastInquiry: row.last.toISOString().slice(0, 10),
+  }));
 
   return {
     title: 'Customer report',
     generatedAt: new Date().toISOString(),
     range: { from: from?.toISOString() ?? null, to: to?.toISOString() ?? null },
     summary: {
-      customers: rows.length,
-      purchasers: withOrders.length,
-      repeatBuyers: rows.filter((row) => row.orders > 1).length,
-      totalLifetimeValue: rows.reduce((sum, row) => sum + row.lifetimeValue, 0),
-      averageLifetimeValue: withOrders.length
-        ? Math.round(withOrders.reduce((sum, row) => sum + row.lifetimeValue, 0) / withOrders.length)
-        : 0,
+      uniqueCustomers: rows.length,
+      repeatCustomers: rows.filter((row) => row.inquiries > 1).length,
+      withEmail: rows.filter((row) => row.email).length,
+      totalPipelineQuoted: rows.reduce((sum, row) => sum + row.quotedValue, 0),
     },
     rows,
   };

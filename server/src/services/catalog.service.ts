@@ -5,10 +5,17 @@ import { buildMeta, toSkip, type PaginationMeta } from '../utils/pagination';
 import { buildFacets, type ProductFacets } from './catalog.facets';
 import { LIST_PROJECTION, buildProductFilter, buildSort, resolveRefs } from './catalog.filter';
 import type { ProductQuery } from '../validators';
+import type { Availability } from '../types';
 
-/** Product read operations for the public catalogue. */
+/**
+ * Product read operations for the public catalogue.
+ *
+ * These return raw rows. Serialisation to the public shape is the
+ * controller's job (`toPublicProduct`), so a service can still be reused by
+ * an admin caller that legitimately needs the whole document.
+ */
 
-type LeanProduct = IProduct & { _id: Types.ObjectId };
+export type LeanProduct = IProduct & { _id: Types.ObjectId };
 
 const POPULATE_REFS = [
   { path: 'category', select: 'name slug' },
@@ -109,8 +116,7 @@ export interface Suggestion {
   sku: string;
   partNumber?: string;
   image?: string;
-  price?: number;
-  pricingMode: string;
+  availability: Availability;
 }
 
 /**
@@ -126,7 +132,7 @@ export async function suggest(term: string, limit: number): Promise<Suggestion[]
     isActive: true,
     $or: [{ sku: prefix }, { partNumber: prefix }, { name: contains }],
   })
-    .select('name slug sku partNumber images price pricingMode salesCount')
+    .select('name slug sku partNumber images availability salesCount')
     .sort({ salesCount: -1, name: 1 })
     .limit(limit)
     .lean<LeanProduct[]>();
@@ -138,7 +144,6 @@ export async function suggest(term: string, limit: number): Promise<Suggestion[]
     sku: product.sku,
     ...(product.partNumber ? { partNumber: product.partNumber } : {}),
     ...(product.images[0]?.url ? { image: product.images[0].url } : {}),
-    ...(typeof product.price === 'number' ? { price: product.price } : {}),
-    pricingMode: product.pricingMode,
+    availability: product.availability ?? 'available_on_order',
   }));
 }

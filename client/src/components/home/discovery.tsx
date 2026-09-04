@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SectionHeading } from '@/components/ui/separator';
 import type { BrandWithCount, CategoryNode } from '@/lib/api/types';
+import { BrandLogo } from '@/components/shared/brand-logo';
 
 /** "Shop by category" grid and the authorised-brand grid. */
 
@@ -79,7 +80,21 @@ export function BrandGrid({ brands }: { brands: BrandWithCount[] }): JSX.Element
                 href={`/brands/${brand.slug}`}
                 className="group flex h-24 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-surface px-3 text-center transition-all hover:border-brand-cyan hover:bg-white hover:shadow-card"
               >
-                <span className="font-heading text-sm font-bold uppercase tracking-wide text-brand-navy/55 transition-colors group-hover:text-brand-navy">
+                {/*
+                  The logo carries the recognition; the name underneath keeps
+                  it searchable, readable to assistive tech, and legible if an
+                  image ever fails. Fixed-height box so a wide mark and a tall
+                  one occupy the same space and the grid stays even.
+                */}
+                <span className="flex h-9 w-full items-center justify-center">
+                  <BrandLogo
+                    slug={brand.slug}
+                    name={brand.name}
+                    className="bg-transparent p-0"
+                    sizes="(max-width: 640px) 40vw, 160px"
+                  />
+                </span>
+                <span className="font-heading text-2xs font-bold uppercase tracking-wide text-brand-navy/70 transition-colors group-hover:text-brand-navy">
                   {brand.name}
                 </span>
                 {brand.country ? (

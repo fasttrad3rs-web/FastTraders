@@ -43,11 +43,14 @@ const rowSchema = z.object({
   categorySlug: z.string().trim().min(1, 'categorySlug is required'),
   subCategorySlug: z.string().trim().optional(),
   brandSlug: z.string().trim().min(1, 'brandSlug is required'),
-  pricingMode: z.enum(['retail', 'quote', 'both']),
-  price: sheetNumber,
-  comparePrice: sheetNumber,
-  costPrice: sheetNumber,
-  taxRate: sheetNumber,
+  availability: z
+    .enum(['ready_stock', 'available_on_order', 'import_on_request', 'discontinued'])
+    .optional(),
+  leadTime: z.string().trim().max(80).optional(),
+  isImportItem: sheetBoolean,
+  lastQuotedPrice: sheetNumber,
+  internalCost: sheetNumber,
+  supplierNotes: z.string().trim().max(2000).optional(),
   stock: sheetNumber,
   lowStockThreshold: sheetNumber,
   unit: z.enum(['piece', 'meter', 'roll', 'box', 'set']).optional(),
@@ -135,8 +138,11 @@ export async function importProducts(buffer: Buffer, dryRun: boolean): Promise<I
       errors.push(`subCategorySlug: "${data.subCategorySlug}" not found`);
     }
 
-    if (data.pricingMode !== 'quote' && typeof data.price !== 'number') {
-      errors.push('price: required unless pricingMode is "quote"');
+    // Nothing about a price is required — the catalogue lists plenty of items
+    // nobody has quoted yet. What a buyer does need is a lead time on anything
+    // being brought in.
+    if (data.isImportItem === true && !data.leadTime) {
+      errors.push('leadTime: required when isImportItem is yes');
     }
 
     if (errors.length > 0 || !categoryId || !brandId) {
@@ -160,11 +166,12 @@ export async function importProducts(buffer: Buffer, dryRun: boolean): Promise<I
       category: categoryId,
       subCategory: subCategoryId ?? null,
       brand: brandId,
-      pricingMode: data.pricingMode,
-      ...(data.price !== undefined ? { price: data.price } : {}),
-      ...(data.comparePrice !== undefined ? { comparePrice: data.comparePrice } : {}),
-      ...(data.costPrice !== undefined ? { costPrice: data.costPrice } : {}),
-      ...(data.taxRate !== undefined ? { taxRate: data.taxRate } : {}),
+      ...(data.availability ? { availability: data.availability } : {}),
+      ...(data.leadTime ? { leadTime: data.leadTime } : {}),
+      ...(data.isImportItem !== undefined ? { isImportItem: data.isImportItem } : {}),
+      ...(data.lastQuotedPrice !== undefined ? { lastQuotedPrice: data.lastQuotedPrice } : {}),
+      ...(data.internalCost !== undefined ? { internalCost: data.internalCost } : {}),
+      ...(data.supplierNotes ? { supplierNotes: data.supplierNotes } : {}),
       ...(data.stock !== undefined ? { stock: data.stock } : {}),
       ...(data.lowStockThreshold !== undefined ? { lowStockThreshold: data.lowStockThreshold } : {}),
       ...(data.unit ? { unit: data.unit } : {}),

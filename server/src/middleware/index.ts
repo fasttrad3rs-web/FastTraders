@@ -6,9 +6,14 @@ export { validate, type ValidationSchemas } from './validate';
 export {
   apiLimiter,
   authLimiter,
-  passwordResetLimiter,
+  inquiryLimiter,
+  inquiryDailyLimiter,
   publicWriteLimiter,
+  publicWriteDailyLimiter,
 } from './rateLimit';
+export { honeypot } from './honeypot';
+export { formTiming } from './form-timing';
+export { multipartJson } from './multipart-json';
 export {
   protect,
   optionalAuth,
@@ -24,5 +29,8 @@ export {
   uploadProductImages,
   uploadDatasheets,
   uploadAttachments,
+  uploadSourcingFiles,
   MAX_FILE_SIZE_BYTES,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENTS,
 } from './upload';

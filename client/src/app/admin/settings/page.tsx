@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,22 +12,24 @@ import { Skeleton } from '@/components/ui/feedback';
 import { toast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/admin/primitives';
 import { useAdminSettings, useUpdateSettings } from '@/lib/api/admin-resources';
-import type { ShippingRule } from '@/types';
 
 /**
  * Store settings.
  *
  * Prefilled with Fast Traders' real details by the seeder; this screen is how
- * Sharjeel changes them without a developer. Shipping rules drive the delivery
- * charge the checkout applies, so the order matters: the first city match wins,
- * with `*` as the fallback.
+ * Sharjeel changes them without a developer.
+ *
+ * There are no delivery zones or tax rates here. The site quotes nothing and
+ * charges nothing — delivery is agreed on the phone along with the price, and
+ * varies by what is being sent and where. A shipping table on this screen was
+ * a leftover from the commerce build and would have implied a fixed charge the
+ * business does not have.
  */
 export default function AdminSettingsPage(): JSX.Element {
   const { data: settings, isPending } = useAdminSettings();
   const update = useUpdateSettings();
 
   const [form, setForm] = useState<Record<string, unknown>>({});
-  const [rules, setRules] = useState<ShippingRule[]>([]);
 
   useEffect(() => {
     if (!settings) return;
@@ -39,7 +41,6 @@ export default function AdminSettingsPage(): JSX.Element {
       landline: settings.landline ?? '',
       whatsapp: settings.whatsapp ?? '',
       address: settings.address,
-      defaultTaxRate: settings.defaultTaxRate,
       announcementText: settings.announcement?.text ?? '',
       announcementLink: settings.announcement?.link ?? '',
       announcementActive: settings.announcement?.isActive ?? false,
@@ -51,11 +52,12 @@ export default function AdminSettingsPage(): JSX.Element {
       accountNumber: settings.bankDetails?.accountNumber ?? '',
       iban: settings.bankDetails?.iban ?? '',
     });
-    setRules(settings.shippingRules ?? []);
   }, [settings]);
 
   const set = (key: string, value: unknown): void => setForm((current) => ({ ...current, [key]: value }));
   const text = (key: string): string => String(form[key] ?? '');
+  /** An optional field's value, or `null` to remove it. Never `''`. */
+  const blank = (key: string): string | null => text(key) || null;
 
   const save = async (): Promise<void> => {
     try {
@@ -64,31 +66,40 @@ export default function AdminSettingsPage(): JSX.Element {
         tagline: text('tagline'),
         email: text('email'),
         phone: text('phone'),
-        ...(text('landline') ? { landline: text('landline') } : {}),
-        ...(text('whatsapp') ? { whatsapp: text('whatsapp') } : {}),
         address: text('address'),
-        defaultTaxRate: Number(form.defaultTaxRate ?? 18),
+        /*
+         * `null` for a cleared box, never omitted. Omitting is what a PATCH
+         * reads as "leave it alone", so the old landline came straight back
+         * and the toast still said "Settings saved". `blank()` is deliberately
+         * used on every optional field rather than a chosen few — the next
+         * field added here inherits the right behaviour by default.
+         */
+        landline: blank('landline'),
+        whatsapp: blank('whatsapp'),
         social: {
-          ...(text('facebook') ? { facebook: text('facebook') } : {}),
-          ...(text('instagram') ? { instagram: text('instagram') } : {}),
-          ...(text('linkedin') ? { linkedin: text('linkedin') } : {}),
+          facebook: blank('facebook'),
+          instagram: blank('instagram'),
+          linkedin: blank('linkedin'),
         },
-        shippingRules: rules,
         announcement: {
-          ...(text('announcementText') ? { text: text('announcementText') } : {}),
-          ...(text('announcementLink') ? { link: text('announcementLink') } : {}),
+          text: blank('announcementText'),
+          link: blank('announcementLink'),
           isActive: form.announcementActive === true,
         },
-        ...(text('bankName') && text('accountNumber')
-          ? {
-              bankDetails: {
+        /*
+         * All-or-nothing, and explicitly `null` when emptied. These details go
+         * out on quotations; a half-cleared bank block is worse than either a
+         * complete one or none at all.
+         */
+        bankDetails:
+          text('bankName') && text('accountNumber')
+            ? {
                 bankName: text('bankName'),
                 accountTitle: text('accountTitle'),
                 accountNumber: text('accountNumber'),
-                ...(text('iban') ? { iban: text('iban') } : {}),
-              },
-            }
-          : {}),
+                iban: blank('iban'),
+              }
+            : null,
       });
       toast.success('Settings saved');
     } catch (error) {
@@ -109,7 +120,7 @@ export default function AdminSettingsPage(): JSX.Element {
     <>
       <PageHeader
         title="Settings"
-        description="Store details, delivery charges and the announcement bar."
+        description="Contact details, bank details and the announcement bar."
         actions={
           <Button variant="cta" size="sm" isLoading={update.isPending} onClick={() => void save()}>
             <Save />
@@ -122,8 +133,7 @@ export default function AdminSettingsPage(): JSX.Element {
         <Tabs defaultValue="store">
           <TabsList className="overflow-x-auto">
             <TabsTrigger value="store">Store</TabsTrigger>
-            <TabsTrigger value="shipping">Shipping &amp; tax</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="payments">Bank details</TabsTrigger>
             <TabsTrigger value="announcement">Announcement</TabsTrigger>
           </TabsList>
 
@@ -160,87 +170,10 @@ export default function AdminSettingsPage(): JSX.Element {
             </div>
           </TabsContent>
 
-          <TabsContent value="shipping">
-            <Field label="Default sales tax (%)" htmlFor="st-tax" hint="Applied to orders unless a product overrides it.">
-              <Input
-                id="st-tax"
-                type="number"
-                min={0}
-                max={100}
-                className="max-w-[140px]"
-                value={String(form.defaultTaxRate ?? 18)}
-                onChange={(e) => set('defaultTaxRate', Number(e.target.value))}
-              />
-            </Field>
-
-            <p className="mb-2 mt-6 text-2xs font-bold uppercase tracking-wide text-muted-foreground">
-              Delivery zones
-            </p>
-            <Alert variant="info" className="mb-3 text-xs">
-              Matched top to bottom — the first city match wins, and <code className="font-mono">*</code>{' '}
-              is the fallback for everywhere else. Keep the wildcard last.
-            </Alert>
-
-            <ul className="space-y-2">
-              {rules.map((rule, index) => (
-                // eslint-disable-next-line react/no-array-index-key -- rules are positional
-                <li key={index} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-5">
-                  {([
-                    ['label', 'Label', 'text'],
-                    ['city', 'City or *', 'text'],
-                    ['cost', 'Cost (Rs.)', 'number'],
-                    ['freeAbove', 'Free above (Rs.)', 'number'],
-                    ['etaDays', 'ETA', 'text'],
-                  ] as const).map(([key, label, kind]) => (
-                    <Input
-                      key={key}
-                      type={kind}
-                      placeholder={label}
-                      aria-label={`${label} for zone ${index + 1}`}
-                      value={String(rule[key] ?? '')}
-                      onChange={(event) =>
-                        setRules((current) =>
-                          current.map((item, position) =>
-                            position === index
-                              ? { ...item, [key]: kind === 'number' ? Number(event.target.value) : event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                  ))}
-                  <div className="sm:col-span-5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => setRules((current) => current.filter((_, position) => position !== index))}
-                    >
-                      <Trash2 />
-                      Remove zone
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() =>
-                setRules((current) => [...current, { label: '', city: '', cost: 0, etaDays: '' }])
-              }
-            >
-              <Plus />
-              Add zone
-            </Button>
-          </TabsContent>
-
           <TabsContent value="payments">
             <Alert variant="info" className="mb-4 text-xs">
-              COD, bank transfer and card are enabled. JazzCash and Easypaisa are wired as adapters
-              on the server but not contracted, so the checkout shows them disabled.
+              Nothing is paid through the website. These details go out with a quote so a
+              customer who accepts can settle by transfer.
             </Alert>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -256,7 +189,7 @@ export default function AdminSettingsPage(): JSX.Element {
               ))}
             </div>
             <p className="mt-3 text-2xs text-muted-foreground">
-              These appear at checkout when a customer picks bank transfer, and on the PDF invoice.
+              Sent to customers with a quote. A bank switch should not need a deploy.
             </p>
           </TabsContent>
 

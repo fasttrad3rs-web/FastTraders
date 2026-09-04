@@ -7,7 +7,7 @@ import {
   slugSchema,
 } from './common.validators';
 
-/** Admin product, category, brand, banner and coupon payloads. */
+/** Admin product, category, brand and banner payloads. */
 
 const seoSchema = z.object({
   title: z.string().trim().max(70).optional(),
@@ -25,9 +25,24 @@ const variantSchema = z.object({
   name: z.string().trim().min(1).max(120),
   sku: z.string().trim().min(1).max(60).toUpperCase(),
   attributes: z.record(z.string().max(120)).default({}),
+  /** Internal, like the parent's. Stripped by `toPublicProduct`. */
   price: z.number().nonnegative().optional(),
   stock: z.number().int().nonnegative().default(0),
   image: z.string().url().optional(),
+});
+
+/**
+ * A datasheet row typed into the form by hand.
+ *
+ * Uploaded PDFs come through `POST /products/:id/datasheets`, which sets a real
+ * Cloudinary `publicId`. A row pasted into the Datasheets tab has no upload
+ * behind it, so it defaults to `manual` — that string is how the media
+ * controller knows there is nothing in Cloudinary to delete alongside it.
+ */
+const datasheetSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  url: z.string().url(),
+  publicId: z.string().trim().min(1).max(200).default('manual'),
 });
 
 /* -------------------------------- Products ------------------------------- */
@@ -44,19 +59,23 @@ export const createProductSchema = z
     category: objectIdSchema,
     subCategory: objectIdSchema.nullable().optional(),
     brand: objectIdSchema,
-    pricingMode: z.enum(['retail', 'quote', 'both']),
-    price: z.number().nonnegative().optional(),
-    comparePrice: z.number().nonnegative().optional(),
-    costPrice: z.number().nonnegative().optional(),
-    taxRate: z.number().min(0).max(100).default(18),
+    /* Internal figures. Optional — a product can be listed before anyone has
+       priced it, which is normal for something imported on request. */
+    lastQuotedPrice: z.number().nonnegative().optional(),
+    internalCost: z.number().nonnegative().optional(),
+    supplierNotes: z.string().trim().max(2000).optional(),
     stock: z.number().int().nonnegative().default(0),
     lowStockThreshold: z.number().int().nonnegative().default(5),
-    /** Only honoured as `on_order`; otherwise derived from stock by the model. */
-    stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock', 'on_order']).optional(),
+    availability: z.enum(['ready_stock', 'available_on_order', 'import_on_request', 'discontinued']).default('available_on_order'),
+    /* Nullable as well as optional, matching `subCategory`: the admin form
+       sends `null` for an empty box rather than branching on create vs edit. */
+    leadTime: z.string().trim().max(80).nullable().optional(),
+    isImportItem: z.boolean().default(false),
     unit: z.enum(['piece', 'meter', 'roll', 'box', 'set']).default('piece'),
     minOrderQty: z.number().int().positive().default(1),
     specifications: z.array(specificationSchema).max(60).default([]),
     variants: z.array(variantSchema).max(40).default([]),
+    datasheets: z.array(datasheetSchema).max(10).default([]),
     tags: z.array(z.string().trim().max(40)).max(30).default([]),
     warranty: z.string().trim().max(120).optional(),
     isFeatured: z.boolean().default(false),
@@ -65,17 +84,17 @@ export const createProductSchema = z
     isActive: z.boolean().default(true),
     seo: seoSchema.optional(),
   })
-  .refine((data) => data.pricingMode === 'quote' || typeof data.price === 'number', {
-    message: 'A price is required unless the product is quote-only',
-    path: ['price'],
+  .refine((data) => data.availability !== 'ready_stock' || data.stock > 0, {
+    message: 'Ready stock needs a stock figure above zero',
+    path: ['availability'],
   })
-  .refine(
-    (data) => data.comparePrice === undefined || data.price === undefined || data.comparePrice > data.price,
-    { message: 'comparePrice must be higher than price', path: ['comparePrice'] },
-  );
+  .refine((data) => !data.isImportItem || Boolean(data.leadTime), {
+    message: 'An imported item needs a lead time — it is the first thing a buyer asks',
+    path: ['leadTime'],
+  });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
-/** Partial update; the price/pricingMode invariant is re-checked in the service. */
+/** Partial update. Same invariants, but only where both fields are present. */
 export const updateProductSchema = z
   .object({
     name: z.string().trim().min(3).max(200).optional(),
@@ -87,17 +106,33 @@ export const updateProductSchema = z
     category: objectIdSchema.optional(),
     subCategory: objectIdSchema.nullable().optional(),
     brand: objectIdSchema.optional(),
-    pricingMode: z.enum(['retail', 'quote', 'both']).optional(),
-    price: z.number().nonnegative().nullable().optional(),
-    comparePrice: z.number().nonnegative().nullable().optional(),
-    costPrice: z.number().nonnegative().nullable().optional(),
-    taxRate: z.number().min(0).max(100).optional(),
+    lastQuotedPrice: z.number().nonnegative().nullable().optional(),
+    internalCost: z.number().nonnegative().nullable().optional(),
+    supplierNotes: z.string().trim().max(2000).nullable().optional(),
+    /*
+     * `stock` belongs here, and its absence was the second half of the
+     * availability bug. The form has a "Stock on hand" box; Zod strips unknown
+     * keys silently, so the figure typed into it was discarded on every edit.
+     * The product kept `stock: 0`, and `demoteEmptyReadyStock` then quite
+     * correctly turned the operator's "Ready Stock" back into "Available on
+     * Order" — the save succeeded, and the choice was undone by a rule
+     * enforcing an invariant on a number the same request had tried to fix.
+     *
+     * `POST /products/:id/stock` remains the way to make a *relative*
+     * adjustment with a reason. This is the absolute set, and the update
+     * controller already audits the whole document before and after, so the
+     * trail that endpoint exists to protect is not lost.
+     */
+    stock: z.number().int().nonnegative().optional(),
     lowStockThreshold: z.number().int().nonnegative().optional(),
-    stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock', 'on_order']).optional(),
+    availability: z.enum(['ready_stock', 'available_on_order', 'import_on_request', 'discontinued']).optional(),
+    leadTime: z.string().trim().max(80).nullable().optional(),
+    isImportItem: z.boolean().optional(),
     unit: z.enum(['piece', 'meter', 'roll', 'box', 'set']).optional(),
     minOrderQty: z.number().int().positive().optional(),
     specifications: z.array(specificationSchema).max(60).optional(),
     variants: z.array(variantSchema).max(40).optional(),
+    datasheets: z.array(datasheetSchema).max(10).optional(),
     tags: z.array(z.string().trim().max(40)).max(30).optional(),
     warranty: z.string().trim().max(120).nullable().optional(),
     isFeatured: z.boolean().optional(),
@@ -126,13 +161,13 @@ export const bulkProductSchema = z
   .object({
     ids: z.array(objectIdSchema).min(1, 'Select at least one product').max(500),
     action: z.enum(['activate', 'deactivate', 'delete', 'feature', 'unfeature', 'price_adjust']),
-    /** Required for `price_adjust`. */
+    /** Required for `price_adjust`. Adjusts internal figures only. */
     adjust: z
       .object({
         type: z.enum(['percent', 'fixed']),
         /** Negative values reduce the price. */
         value: z.number(),
-        field: z.enum(['price', 'comparePrice', 'costPrice']).default('price'),
+        field: z.enum(['lastQuotedPrice', 'internalCost']).default('lastQuotedPrice'),
         roundTo: z.number().int().nonnegative().default(0),
       })
       .optional(),
@@ -147,13 +182,15 @@ export const adminProductQuerySchema = paginationSchema.extend({
   search: z.string().trim().max(120).optional(),
   category: objectIdSchema.optional(),
   brand: objectIdSchema.optional(),
-  pricingMode: z.enum(['retail', 'quote', 'both']).optional(),
+  availability: z
+    .enum(['ready_stock', 'available_on_order', 'import_on_request', 'discontinued'])
+    .optional(),
   isActive: booleanQuerySchema.optional(),
   lowStock: booleanQuerySchema.optional(),
   outOfStock: booleanQuerySchema.optional(),
   tags: csvSchema.optional(),
   sort: z
-    .enum(['newest', 'oldest', 'name', 'price_asc', 'price_desc', 'stock_asc', 'stock_desc', 'sales'])
+    .enum(['newest', 'oldest', 'name', 'stock_asc', 'stock_desc', 'sales'])
     .default('newest'),
 });
 export type AdminProductQuery = z.infer<typeof adminProductQuerySchema>;

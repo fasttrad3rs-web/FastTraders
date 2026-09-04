@@ -43,21 +43,27 @@ export const authLimiter: RateLimitRequestHandler = rateLimit({
 });
 
 /**
- * Password-reset and email-verification dispatch. Keyed per IP; 3 per hour is
- * plenty for a real user and stops the SMTP account being used as a relay.
+ * Inquiry submission: 3 per IP per hour.
+ *
+ * Tight, because every one of these sends Sharjeel an email and lands on a
+ * screen he works by hand — a flood is not just noise, it buries the real
+ * leads. Three is generous for a genuine buyer, who sends one. A shared
+ * office NAT could in principle hit it; the message says to phone, which is
+ * the channel this business prefers anyway.
  */
-export const passwordResetLimiter: RateLimitRequestHandler = rateLimit({
+export const inquiryLimiter: RateLimitRequestHandler = rateLimit({
   ...shared,
   windowMs: 60 * 60 * 1000,
   limit: 3,
   message: {
     success: false,
-    message: 'Too many reset requests. Please try again in an hour.',
+    message:
+      'You have sent several inquiries in the last hour. Please call +92 324 4234990 if it is urgent.',
     data: null,
   },
 });
 
-/** Limiter for public write endpoints (contact form, RFQ submission). */
+/** Limiter for other public writes (contact form, newsletter). */
 export const publicWriteLimiter: RateLimitRequestHandler = rateLimit({
   ...shared,
   windowMs: 60 * 60 * 1000,
@@ -65,6 +71,38 @@ export const publicWriteLimiter: RateLimitRequestHandler = rateLimit({
   message: {
     success: false,
     message: 'Too many submissions. Please try again later.',
+    data: null,
+  },
+});
+
+/**
+ * Daily ceiling on inquiries: 10 per IP per 24 hours.
+ *
+ * The hourly limiter stops a burst; this stops the patient version of the same
+ * attack — three an hour, all day, which is 72 emails and a buried inbox. The
+ * two run together and the tighter one wins, so a genuine buyer sending one
+ * inquiry never sees either.
+ */
+export const inquiryDailyLimiter: RateLimitRequestHandler = rateLimit({
+  ...shared,
+  windowMs: 24 * 60 * 60 * 1000,
+  limit: 10,
+  message: {
+    success: false,
+    message:
+      'You have reached the daily limit for online inquiries. Please call +92 324 4234990.',
+    data: null,
+  },
+});
+
+/** The same daily ceiling for the contact form and newsletter sign-ups. */
+export const publicWriteDailyLimiter: RateLimitRequestHandler = rateLimit({
+  ...shared,
+  windowMs: 24 * 60 * 60 * 1000,
+  limit: 10,
+  message: {
+    success: false,
+    message: 'You have reached the daily limit for form submissions. Please call us instead.',
     data: null,
   },
 });

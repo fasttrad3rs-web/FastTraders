@@ -27,7 +27,9 @@ const REDACTED_KEYS = new Set([
   'emailVerifyToken',
   'resetPasswordToken',
   'resetPasswordExpiry',
-  'costPrice',
+  'internalCost',
+  'lastQuotedPrice',
+  'supplierNotes',
 ]);
 
 function redact(snapshot?: Record<string, unknown>): Record<string, unknown> | undefined {

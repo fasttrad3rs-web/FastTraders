@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  /*
+   * The maintenance scripts — doctor, seed:dryrun, routes, api-audit,
+   * verify-cloudinary — belonged to no TypeScript project at all.
+   *
+   * `tsconfig.json` includes only `src/**`, so `tsc` never looked at them and
+   * `eslint` could not parse them: every file in `scripts/` reported "not found
+   * in any of the provided project(s)" in the editor, which is most of the
+   * problem count VS Code was showing. They shipped unchecked, and `api-audit.ts`
+   * had two real type errors nobody had ever been told about.
+   *
+   * `rootDir` is widened to the workspace root because these files sit beside
+   * `src/` and import from it. Nothing is emitted from this config — it exists
+   * for the type checker and the linter.
+   */
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "noUnusedLocals": false,
+    "typeRoots": ["../node_modules/@types", "./node_modules/@types", "./src/types"]
+  },
+  "include": ["scripts/**/*.ts", "src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

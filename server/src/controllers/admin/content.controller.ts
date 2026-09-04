@@ -8,8 +8,9 @@ import { ApiError } from '../../utils/ApiError';
 import { sendSuccess } from '../../utils/ApiResponse';
 import { buildMeta, toSkip } from '../../utils/pagination';
 import type { ReportQuery, UpdateSettingsInput } from '../../validators';
+import { revalidate } from '../../services/revalidate.service';
 
-/** Settings, enquiries, subscribers, the audit trail and reports. */
+/** Settings, contact messages, subscribers, the audit trail and reports. */
 
 /* -------------------------------- Settings ------------------------------- */
 
@@ -17,6 +18,35 @@ export async function getSettings(_req: Request, res: Response): Promise<void> {
   // Admins see everything, including bank details.
   const settings = await Setting.findOne({ key: 'global' }).lean();
   sendSuccess(res, settings, settings ? 'Site settings' : 'Settings have not been created yet');
+}
+
+/**
+ * Rewrite a nested patch as dot paths: `{ social: { facebook: x } }` becomes
+ * `{ 'social.facebook': x }`.
+ *
+ * Without this, `$set` replaces a whole subdocument. The settings screen edits
+ * three of the five social links, so every save silently erased the seeded
+ * WhatsApp URL — the footer link just stopped working, with nothing in the
+ * admin to suggest why.
+ *
+ * `null` is left whole on purpose: `bankDetails: null` has to clear the entire
+ * block, not descend into it. Arrays are values too — business hours are
+ * replaced wholesale, which is what editing a list means.
+ */
+function toDotPaths(input: Record<string, unknown>, prefix = ''): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(input)) {
+    const path = prefix ? `${prefix}.${key}` : key;
+
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      Object.assign(out, toDotPaths(value as Record<string, unknown>, path));
+    } else {
+      out[path] = value;
+    }
+  }
+
+  return out;
 }
 
 export async function updateSettings(req: Request, res: Response): Promise<void> {
@@ -27,7 +57,7 @@ export async function updateSettings(req: Request, res: Response): Promise<void>
   // Upsert keeps the singleton invariant even on a fresh database.
   const settings = await Setting.findOneAndUpdate(
     { key: 'global' },
-    { $set: input, $setOnInsert: { key: 'global' } },
+    { $set: toDotPaths(input as Record<string, unknown>), $setOnInsert: { key: 'global' } },
     { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
   );
 
@@ -39,6 +69,13 @@ export async function updateSettings(req: Request, res: Response): Promise<void>
     before: before ?? undefined,
     after: input,
   });
+
+  /*
+   * Settings feed the header, the footer, the contact page and every WhatsApp
+   * link. A phone-number change that only lands after the next ISR window is a
+   * change Sharjeel cannot trust.
+   */
+  revalidate(['settings']);
 
   sendSuccess(res, settings, 'Settings updated');
 }
@@ -175,8 +212,8 @@ export async function getReport(req: Request, res: Response): Promise<void> {
   const { type, format, from, to } = req.query as unknown as ReportQuery;
 
   const report =
-    type === 'sales'
-      ? await reports.salesReport(from, to)
+    type === 'inquiries'
+      ? await reports.inquiryReport(from, to)
       : type === 'inventory'
         ? await reports.inventoryReport()
         : await reports.customerReport(from, to);

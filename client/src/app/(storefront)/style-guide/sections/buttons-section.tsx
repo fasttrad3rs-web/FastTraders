@@ -24,7 +24,7 @@ export function ButtonsSection(): JSX.Element {
           <p className="mb-3 text-2xs font-bold uppercase tracking-wide text-muted-foreground">Variants</p>
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="primary">Primary</Button>
-            <Button variant="cta">Add to Cart</Button>
+            <Button variant="cta">Add to Inquiry</Button>
             <Button variant="outline">Outline</Button>
             <Button variant="ghost">Ghost</Button>
             <Button variant="danger">
@@ -95,7 +95,7 @@ export function ButtonsSection(): JSX.Element {
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Chip label="Schneider Electric" onRemove={() => undefined} />
-            <Chip label="Rs. 1,000 – 50,000" onRemove={() => undefined} />
+            <Chip label="Ready Stock" onRemove={() => undefined} />
             <Chip label="In stock" onRemove={() => undefined} />
             <Chip label="Read-only chip" />
           </div>
