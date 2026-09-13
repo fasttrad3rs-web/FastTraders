@@ -108,20 +108,41 @@ async function destroy(): Promise<void> {
  * but it has to be typed deliberately.
  */
 function assertSafeForThisDatabase(): void {
-  if (env.NODE_ENV !== 'production') return;
+  /*
+   * The danger is the database being *pointed at*, not this machine's
+   * NODE_ENV — and the first version of this guard got that wrong.
+   *
+   * It only checked `NODE_ENV === 'production'`, which is never true on a
+   * developer's laptop. So the exact command it existed to prevent —
+   * `MONGO_URI="<the live Atlas string>" npm run seed`, typed from a Mac while
+   * setting up production — sailed straight past it and would have dropped
+   * fifty invented products into the client's catalogue.
+   *
+   * A URI that is not localhost is a remote database, and a remote database is
+   * somebody's. That is the test that matters.
+   */
+  const target = env.MONGO_URI;
+  const isLocal = /(?:localhost|127\.0\.0\.1|::1)/.test(target);
+  const dangerous = env.NODE_ENV === 'production' || !isLocal;
+
+  if (!dangerous) return;
+
   if (process.argv.includes('--force')) {
-    logger.warn('[seed] NODE_ENV=production and --force given. Proceeding.');
+    logger.warn('[seed] Non-local database and --force given. Proceeding.');
     return;
   }
 
+  // Host only — never log a URI, it carries the password.
+  const host = /@([^/?]+)/.exec(target)?.[1] ?? 'a remote host';
   const action = shouldDestroy ? 'seed:destroy' : 'the full seeder';
+
   logger.error(
-    `[seed] Refusing to run ${action} with NODE_ENV=production. ` +
+    `[seed] Refusing to run ${action} against ${host}. ` +
       (shouldDestroy
         ? 'This deletes every product and every inquiry the business has. '
         : 'This inserts fifty demo products into a live catalogue. ') +
-      'Use `npm run seed:live` for reference data, or add --force if you are ' +
-      'certain this database is empty and new.',
+      'Use `npm run seed:live` for reference data only, or add --force if you ' +
+      'are certain this database is empty and new.',
   );
   process.exit(1);
 }

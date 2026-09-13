@@ -23,7 +23,18 @@ on purpose — that is what stops a bug on your laptop from reaching the client.
 
 ### Remaining, in order
 
+- [ ] **Rotate `REVALIDATE_SECRET`** — it was briefly published as a public DNS TXT
+      record on `_railway-verify.api`, and the same value is in use on Railway,
+      Vercel and both local env files. Low severity: it guards only
+      `POST /api/revalidate`, which clears cached pages — no data, no admin, no
+      database. But it is a shared secret that was made public, so it should not
+      go live unchanged. Rotate as **two pairs**: dev (`server/.env` +
+      `client/.env.local`) and production (Railway + Vercel), a different value
+      for each pair. Vercel needs a rebuild, not just a variable change.
 - [ ] **Rotate the Cloudinary API secret** — the current one was pasted into a chat
+- [ ] **Rotate the Atlas database password** — also pasted into a chat, and the
+      Atlas allowlist is currently `0.0.0.0/0`, so that password is the only
+      control on the database
 - [ ] **Untick PDF and ZIP** in his Cloudinary → Settings → Security → Restricted
       media types, or every datasheet link in an alert email returns 401
 - [ ] **Register fasttraders.co** on his card, auto-renew on
@@ -73,22 +84,43 @@ Tell him this before you start, not after. Prices drift — confirm each at sign
 | Domain `fasttraders.co` | — | ~$30/yr | `.co` renews dearer than it registers |
 | MongoDB Atlas | M0 | Free | No automatic backups on M0 — see the warning below |
 | Cloudinary | Free | Free | Generous for a catalogue this size |
-| Railway (API) | Hobby | $5/mo | $5 of usage included; this app will sit under it |
-| Vercel (site) | **Pro** | $20/mo | See below — Hobby is not an option here |
+| API host | **Railway Pro** $20/mo **or** Render Starter $7/mo | | See below |
+| Vercel (site) | **Pro** | $20/mo | Hobby is not an option here |
 | Gmail SMTP | — | Free | ~500 mails/day, far above inquiry volume |
 
-**About Vercel.** The free Hobby plan is restricted to non-commercial personal use.
-A lead-generation site for a trading business is commercial by Vercel's own
-definition, and running it on Hobby is a terms violation they do enforce. Budget
-Pro, or host the front end somewhere else. Do not quietly deploy to Hobby and hope
-— that is a site that can vanish without notice.
+**The cheap tiers are not available to this project, and the reason is legal, not
+technical.** Both Vercel's Hobby plan and Railway's Hobby plan restrict use to
+personal, non-commercial projects. Railway's terms are explicit that the service
+must not be used "on behalf of or for the benefit of any third party" — a client's
+business site is both commercial and third-party. Neither platform is being
+generous by letting the deploy succeed; enforcement is occasional and after the
+fact, which is worse, because it arrives as a site that stops working.
+
+**Render is the exception worth knowing.** It permits commercial use on every
+tier, including free, and an always-on Starter service is $7/month. Moving the API
+there takes the same build command, start command and environment variables, so
+it is re-entering known values rather than solving anything new.
+
+| | Railway route | Render route |
+|---|---|---|
+| Front end | Vercel Pro $20 | Vercel Pro $20 |
+| API | Railway Pro $20 | Render Starter $7 |
+| **Monthly** | **$40** | **$27** |
+
+Vercel Pro is the harder one to avoid: Next.js App Router with ISR and
+`revalidateTag` — the mechanism that makes an admin edit appear on the storefront
+immediately rather than five minutes later — works properly there and unevenly
+elsewhere.
 
 **About Atlas M0.** The free tier has no automatic backups. The inquiry history is
 the accumulated commercial value of this system and exists nowhere else. Either
 budget the paid tier, or commit to the scheduled `mongodump` in `MAINTENANCE.md` §1
 and actually run it.
 
-Total realistic: **~$25/month plus the domain.**
+Total realistic: **$27–40/month plus the domain**, depending on where the API
+lives. Give Sharjeel the real figure before he commits — that is roughly
+PKR 8,000–11,000 a month, which is a decision for him rather than an assumption
+for you.
 
 ---
 

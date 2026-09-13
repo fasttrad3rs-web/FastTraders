@@ -70,7 +70,15 @@ async function main(): Promise<void> {
 
   await connectDatabase();
 
-  const existing = await User.findOne({ email: parsed.email }).select('+passwordHash');
+  /*
+   * Select every `select: false` field this script writes to. `--deactivate`
+   * clears `refreshTokens`, and the reset path zeroes `failedLoginAttempts` and
+   * `lockedUntil`; loading a document without them means writing into fields
+   * Mongoose believes are absent.
+   */
+  const existing = await User.findOne({ email: parsed.email }).select(
+    '+passwordHash +refreshTokens +failedLoginAttempts +lockedUntil',
+  );
 
   /* ---------------------------- Deactivate ---------------------------- */
   if (parsed.deactivate) {

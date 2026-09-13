@@ -110,10 +110,24 @@ userSchema.pre('save', async function hashPassword(next) {
   next();
 });
 
-/** Never let the token list grow without bound. */
+/**
+ * Never let the token list grow without bound.
+ *
+ * `refreshTokens` is `select: false`, so a document loaded without explicitly
+ * asking for it has `undefined` here, not `[]`. Reading `.length` off that
+ * threw on every save of a partially-selected user — which is exactly what
+ * `create-admin` does when resetting a password, so the documented recovery
+ * procedure for a locked-out admin failed with
+ * `Cannot read properties of undefined (reading 'length')`.
+ *
+ * The guard belongs in the hook rather than at each call site: every future
+ * query that omits this field would otherwise plant the same landmine, and it
+ * only goes off on a write.
+ */
 userSchema.pre('save', function trimRefreshTokens(next) {
-  if (this.refreshTokens.length > MAX_REFRESH_TOKENS) {
-    this.refreshTokens = this.refreshTokens.slice(-MAX_REFRESH_TOKENS);
+  const tokens = this.refreshTokens;
+  if (Array.isArray(tokens) && tokens.length > MAX_REFRESH_TOKENS) {
+    this.refreshTokens = tokens.slice(-MAX_REFRESH_TOKENS);
   }
   next();
 });
