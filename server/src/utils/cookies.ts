@@ -31,14 +31,34 @@ export function durationToMs(duration: string): number {
   return value * (factors[unit] ?? 1000);
 }
 
+/**
+ * Cookie scope, and the reason it is configurable.
+ *
+ * Without a `domain`, a cookie is *host-only*: set by `api.fasttraders.co`, it
+ * is never sent to `fasttraders.co`. The storefront's Next.js middleware reads
+ * `ft_access_token` on the Vercel host to decide whether to show the admin, so
+ * a host-only cookie meant every successful login bounced straight back to the
+ * sign-in page — correct credentials, HTTP 200, cookie set, and the operator
+ * staring at an unchanged form with no error to explain it.
+ *
+ * Setting `COOKIE_DOMAIN=.fasttraders.co` scopes it to the parent so both hosts
+ * receive it. It stays unset in development, where the site and API are both
+ * `localhost` and a domain attribute would break the cookie entirely.
+ *
+ * `sameSite` follows from the same fact. When the two share a registrable
+ * domain they are same-site, and `lax` is correct *and* stricter — it still
+ * blocks genuine cross-site POSTs. `none` is only needed when the API and site
+ * are on unrelated domains, which is exactly the case `COOKIE_DOMAIN` being
+ * unset describes.
+ */
 function baseOptions(maxAge: number): CookieOptions {
+  const domain = env.COOKIE_DOMAIN;
+
   return {
     httpOnly: true,
     secure: isProduction,
-    // `lax` keeps the cookie on top-level navigations from email links while
-    // still blocking cross-site POSTs. Switch to `none` only if the API and
-    // site end up on unrelated domains.
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: isProduction && !domain ? 'none' : 'lax',
+    ...(domain ? { domain } : {}),
     path: '/',
     maxAge,
   };

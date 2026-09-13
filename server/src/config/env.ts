@@ -28,6 +28,23 @@ const envSchema = z.object({
   /* 5050, not 5000: macOS AirPlay Receiver owns 5000 and the bind fails. */
   PORT: z.coerce.number().int().positive().default(5050),
 
+  /*
+   * Parent domain for the auth cookies, e.g. `.fasttraders.co`.
+   *
+   * Required whenever the API and the site sit on different hosts of the same
+   * domain (`api.fasttraders.co` and `www.fasttraders.co`). Without it the
+   * cookie is host-only, the storefront's middleware cannot see it, and every
+   * successful login silently bounces back to the sign-in page.
+   *
+   * Leave unset in development — both run on `localhost`, where a domain
+   * attribute stops the cookie being stored at all.
+   */
+  COOKIE_DOMAIN: z
+    .string()
+    .trim()
+    .regex(/^\.[a-z0-9-]+(\.[a-z0-9-]+)+$/i, 'COOKIE_DOMAIN must start with a dot, e.g. .fasttraders.co')
+    .optional(),
+
   /* -------------------------- Database -------------------------- */
   MONGO_URI: z
     .string()
