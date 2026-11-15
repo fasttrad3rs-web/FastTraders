@@ -1,7 +1,15 @@
 import type { BrandSeed } from './types';
 
 /**
- * The 12 brands Fast Traders is authorised to stock.
+ * Every brand Fast Traders supplies.
+ *
+ * **Two different relationships live in this list.** The first twelve are
+ * manufacturers Fast Traders holds a distributor account with — those are the
+ * ones the FAQ's warranty answer and the terms page refer to. The rest are
+ * supplied to order through the China network, and the storefront copy is
+ * worded so that neither claim is made about the other. If that distinction
+ * ever needs to be shown per brand rather than described in prose, it wants a
+ * field on the model, not a comment here.
  *
  * `logo` points at a file in the *client's* `public/brand/logos/`, named after
  * the slug. Serving them from the front end rather than Cloudinary is
@@ -135,5 +143,109 @@ export const brands: BrandSeed[] = [
     description:
       'Cables, wires and transformers manufactured to IEC and PSQCA standards for the Pakistani market.',
     displayOrder: 12,
+  },
+
+  /* ---------------------- Supplied to order, from 13 ---------------------- */
+
+  {
+    name: 'Allen-Bradley',
+    slug: 'allen-bradley',
+    logo: '/brand/logos/allen-bradley.png',
+    country: 'United States',
+    website: 'https://www.rockwellautomation.com',
+    description:
+      'Rockwell Automation’s control brand. ControlLogix and CompactLogix PLCs, PanelView terminals, PowerFlex drives and the 1492 terminal system.',
+    displayOrder: 13,
+  },
+  {
+    name: 'Danfoss',
+    slug: 'danfoss',
+    logo: '/brand/logos/danfoss.png',
+    country: 'Denmark',
+    website: 'https://www.danfoss.com',
+    description:
+      'Danish manufacturer of variable frequency drives and refrigeration controls. The VLT and VACON drive families are widely used on pumps, fans and HVAC plant.',
+    displayOrder: 14,
+  },
+  {
+    name: 'Carrier',
+    slug: 'carrier',
+    logo: '/brand/logos/carrier.png',
+    country: 'United States',
+    website: 'https://www.carrier.com',
+    description:
+      'Air conditioning, refrigeration and building services equipment, together with the controls and spares that go with them.',
+    displayOrder: 15,
+  },
+  {
+    name: 'TE Connectivity',
+    slug: 'te-connectivity',
+    logo: '/brand/logos/te-connectivity.png',
+    country: 'Switzerland',
+    website: 'https://www.te.com',
+    description:
+      'Connectors, terminals, relays and sensors for industrial wiring. The crimp terminal and heat-shrink ranges are panel-shop staples.',
+    displayOrder: 16,
+  },
+  {
+    name: 'CHINT',
+    slug: 'chint',
+    logo: '/brand/logos/chint.png',
+    country: 'China',
+    website: 'https://www.chintglobal.com',
+    description:
+      'One of China’s largest low-voltage manufacturers: MCBs, MCCBs, contactors, overload relays and distribution equipment at volume pricing.',
+    displayOrder: 17,
+  },
+  {
+    name: 'ENTES',
+    slug: 'entes',
+    logo: '/brand/logos/entes.png',
+    country: 'Turkey',
+    website: 'https://www.entes.com.tr',
+    description:
+      'Turkish maker of power analysers, reactive power controllers, multimeters and current transformers for distribution panels and PFI work.',
+    displayOrder: 18,
+  },
+  {
+    name: 'Tense',
+    slug: 'tense',
+    logo: '/brand/logos/tense.png',
+    country: 'Turkey',
+    description:
+      'Turkish manufacturer of protection relays, phase-failure and voltage monitoring devices, timers and power-factor controllers.',
+    displayOrder: 19,
+  },
+  {
+    name: 'TENGEN',
+    slug: 'tengen',
+    logo: '/brand/logos/tengen.png',
+    country: 'China',
+    description:
+      'Chinese low-voltage switchgear manufacturer: miniature and moulded-case circuit breakers, contactors, isolators and distribution boxes.',
+    displayOrder: 20,
+  },
+  {
+    name: 'TOMZN',
+    slug: 'tomzn',
+    logo: '/brand/logos/tomzn.png',
+    country: 'China',
+    description:
+      'Chinese manufacturer of din-rail protection devices — adjustable over/under-voltage protectors, surge protection and energy meters.',
+    displayOrder: 21,
+  },
+  {
+    /*
+     * The wordmark is set in Greek letterforms — Κ ρ ι ο — which read as the
+     * Latin "KPIO". Worth knowing before somebody decides the logo file is the
+     * wrong one and replaces it.
+     */
+    name: 'KPIO',
+    slug: 'kpio',
+    logo: '/brand/logos/kpio.png',
+    country: 'China',
+    description:
+      'Valve automation accessories: limit switch boxes, visual position indicators and solenoid valves for quarter-turn pneumatic and electric actuators.',
+    displayOrder: 22,
   },
 ];

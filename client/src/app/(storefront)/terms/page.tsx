@@ -47,7 +47,7 @@ export default function TermsPage(): JSX.Element {
         {
           heading: 'Warranty',
           body: [
-            'Warranty is limited to the manufacturer’s terms for the brand concerned. We are an authorised stockist and will handle a valid warranty claim on your behalf.',
+            'Warranty is limited to the manufacturer’s terms for the brand concerned. Where we are an authorised stockist we will handle a valid claim on your behalf; for brands supplied to order we will confirm at the time of quotation what warranty applies.',
             'Warranty does not cover damage from incorrect installation, over-voltage, water ingress or use outside the product’s rated conditions.',
           ],
         },

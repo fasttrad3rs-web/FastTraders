@@ -39,8 +39,19 @@ const FAQS = [
   },
   {
     question: 'Are your products genuine?',
+    /*
+     * This answer is a commitment, not copy. It was rewritten when the brand
+     * list grew beyond the manufacturers Fast Traders holds an account with:
+     * the old wording promised a manufacturer's warranty on every item on the
+     * site, which would not have been true for a brand supplied to order.
+     *
+     * Being explicit about the two routes is also the stronger answer. In a
+     * market with a genuine counterfeit problem, a supplier who tells you
+     * where a part came from is worth more than one who claims everything is
+     * official.
+     */
     answer:
-      'Yes. We are an authorised stockist for the brands listed on this site and source only through official channels. Counterfeit breakers are a real problem in this market, which is why every item we supply carries the manufacturer’s warranty.',
+      'For the manufacturers we are an authorised stockist for, we source only through official channels and the full manufacturer’s warranty applies. Other brands we supply to order through our own network — and we will tell you before you buy which route your item comes by and what warranty comes with it. Counterfeit breakers are a real problem in this market, and being straight about the source is how we deal with it.',
   },
   {
     question: 'Why are there no prices on the website?',

@@ -10,9 +10,9 @@ import { BrandLogo } from '@/components/shared/brand-logo';
 export const revalidate = 600;
 
 export const metadata: Metadata = buildMetadata({
-  title: 'Authorised Brands — Terasaki, Schneider, Mitsubishi, Fuji & More',
+  title: 'Brands We Supply — Terasaki, Schneider, Mitsubishi, Fuji & More',
   description:
-    'Fast Traders is an authorised stockist for Terasaki, National, Fuji Electric, Mitsubishi Electric, Hager, Schneider Electric, Autonics, IDEC, DELAB, Pilz, WAGO and Torex in Lahore, Pakistan.',
+    'Fast Traders supplies Terasaki, Schneider Electric, Mitsubishi Electric, Fuji Electric, Hager, Autonics, IDEC, Pilz, WAGO and more in Lahore, Pakistan — as an authorised stockist for some, and to order for the rest.',
   path: '/brands',
   keywords: ['Schneider Electric dealer Lahore', 'Terasaki Pakistan', 'Mitsubishi Electric Lahore'],
 });
@@ -30,9 +30,20 @@ export default async function BrandsPage(): Promise<JSX.Element> {
         <h1 className="font-heading text-2xl font-extrabold uppercase tracking-tight text-brand-navy sm:text-3xl">
           Brands We Deal In
         </h1>
+        {/*
+          Two different relationships, stated as two different things.
+
+          Fast Traders holds a distributor account with some of these
+          manufacturers and supplies the rest to order through its own network.
+          Calling both "authorised stockist" would be the easy sentence and a
+          false one — and it is attached to a warranty promise in the FAQ and
+          the terms, so the wording is a commitment, not marketing.
+        */}
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          We are an authorised stockist and supplier for the manufacturers below. Everything we
-          sell is sourced through official channels — click a brand to see what we hold.
+          Some of these we hold as an authorised stockist, sourced through official channels.
+          Others we supply to order through our own network. Either way, tell us the part and we
+          will tell you honestly where it comes from and how long it takes — click a brand to see
+          what we carry.
         </p>
       </header>
 

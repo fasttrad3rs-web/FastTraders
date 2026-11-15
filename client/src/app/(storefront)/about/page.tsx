@@ -92,7 +92,7 @@ export default async function AboutPage(): Promise<JSX.Element> {
 
       <section className="border-y border-border bg-white py-14">
         <div className="container">
-          <SectionHeading title="Our brand partners" description="Authorised stockist and supplier." />
+          <SectionHeading title="Our brand partners" description="Authorised stockist for some, supplied to order for the rest." />
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {(brands ?? []).map((brand) => (
               <li key={brand.id}>

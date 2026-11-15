@@ -70,7 +70,7 @@ export function BrandGrid({ brands }: { brands: BrandWithCount[] }): JSX.Element
       <div className="container">
         <SectionHeading
           title="Brands We Deal In"
-          description="Authorised stockist and supplier. Click a brand to see everything we hold."
+          description="Authorised stockist for some, supplied to order for the rest. Click a brand to see what we carry."
         />
 
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">

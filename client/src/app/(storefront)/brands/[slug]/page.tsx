@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     title: `${brand.name} — Authorised Dealer in Lahore, Pakistan`,
     description:
       brand.description ??
-      `Buy genuine ${brand.name} products from Fast Traders, an authorised stockist in Lahore, Pakistan.`,
+      `Buy genuine ${brand.name} products from Fast Traders in Lahore, Pakistan. Call for availability and a price.`,
     path: `/brands/${brand.slug}`,
     keywords: [
       `${brand.name} Lahore`,
