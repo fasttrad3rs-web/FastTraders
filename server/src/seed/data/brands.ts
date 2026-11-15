@@ -248,4 +248,14 @@ export const brands: BrandSeed[] = [
       'Valve automation accessories: limit switch boxes, visual position indicators and solenoid valves for quarter-turn pneumatic and electric actuators.',
     displayOrder: 22,
   },
+  {
+    name: 'Siemens',
+    slug: 'siemens',
+    logo: '/brand/logos/siemens.png',
+    country: 'Germany',
+    website: 'https://www.siemens.com',
+    description:
+      'German industrial manufacturer. SIMATIC PLCs and HMIs, SINAMICS drives, SIRIUS contactors and overloads, and the 3VA and 5SL breaker families.',
+    displayOrder: 23,
+  },
 ];
