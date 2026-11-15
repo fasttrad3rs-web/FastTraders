@@ -14,40 +14,88 @@ on purpose — that is what stops a bug on your laptop from reaching the client.
 
 | | Development (yours — **do not change**) | Production (his) | Done? |
 |---|---|---|---|
-| Database | `fast_traders_dev`, your Atlas | new Atlas cluster | ☐ |
-| Images | Cloudinary `by9gftmc`, folder `fast-traders-dev` | Cloudinary `rlsvrkrb`, folder `fast-traders` | ☑ created |
+| Database | `fast_traders_dev` | `fast_traders`, same Atlas cluster | ☑ |
+| Images | Cloudinary `by9gftmc`, folder `fast-traders-dev` | Cloudinary `rlsvrkrb`, folder `fast-traders` | ☑ |
 | Email | Mailtrap sandbox — catches, never delivers | Gmail SMTP + app password | ☐ |
-| Alerts to | `whoisabdullah254@gmail.com` | `fasttrad3rs@gmail.com` | ☐ |
-| Site | `localhost:3000` | Vercel + `www.fasttraders.co` | ☐ |
-| API | `localhost:5050` | Railway | ☐ |
+| Alerts to | `whoisabdullah254@gmail.com` | `fasttrad3rs@gmail.com` | ☑ |
+| Site | `localhost:3000` | Vercel + `www.fasttraders.co` | ☑ |
+| API | `localhost:5050` | Railway + `api.fasttraders.co` | ☑ |
 
-### Remaining, in order
+**The site is live and the admin signs in.** What follows is what stands between
+that and handing it over.
 
-- [ ] **Rotate `REVALIDATE_SECRET`** — it was briefly published as a public DNS TXT
-      record on `_railway-verify.api`, and the same value is in use on Railway,
-      Vercel and both local env files. Low severity: it guards only
-      `POST /api/revalidate`, which clears cached pages — no data, no admin, no
-      database. But it is a shared secret that was made public, so it should not
-      go live unchanged. Rotate as **two pairs**: dev (`server/.env` +
-      `client/.env.local`) and production (Railway + Vercel), a different value
-      for each pair. Vercel needs a rebuild, not just a variable change.
-- [ ] **Rotate the Cloudinary API secret** — the current one was pasted into a chat
-- [ ] **Rotate the Atlas database password** — also pasted into a chat, and the
-      Atlas allowlist is currently `0.0.0.0/0`, so that password is the only
-      control on the database
-- [ ] **Untick PDF and ZIP** in his Cloudinary → Settings → Security → Restricted
+### Blockers — before Sharjeel's customers see it
+
+- [ ] **Real SMTP.** Until the Gmail app password is in Railway, no inquiry alert
+      reaches the shop. `verifyMailer()` is deliberately non-fatal, so the API
+      runs perfectly and every alert fails quietly — the one failure this site
+      cannot afford, because a missed lead looks exactly like a quiet week.
+      Needs: 2-Step Verification on Sharjeel's phone → App password → Railway.
+- [ ] **Real products.** The catalogue is empty by design (`seed:live` loaded
+      brands, categories and settings only). Photography is the critical path.
+- [ ] **Bank details** still read *"Update in admin settings"* — literally that
+      string, in the account name and number. They print on quotations.
+- [ ] **Mobile hero images** are placeholder SVGs. Most visitors are on phones,
+      so it is the first thing most people will see.
+- [ ] **A second admin account**, or Sharjeel is one forgotten password away from
+      needing you. `npm run create-admin -- --email ... --role manager`
+
+### ⚠ Railway security incident — 21 October 2026
+
+Railway disclosed that an unauthorised third party may have accessed customer
+environment variables, and for some of them obtained the decrypted contents.
+Deployments were paused platform-wide. **Every secret that was in Railway's
+variables at that date must be treated as exposed**: `MONGO_URI`, both JWT
+secrets, `CLOUDINARY_API_SECRET`, `REVALIDATE_SECRET`.
+
+`SMTP_PASS` escaped only because it still held a worthless Mailtrap sandbox
+token at the time.
+
+Because variables were frozen and could not be updated, the Atlas password was
+rotated and then **deliberately set back** to the exposed value, so the running
+API could survive a restart. That was a considered trade — the database held no
+customer data, so the cost of a breach was lower than the cost of an
+unrecoverable outage. **It stops being the right trade the moment real inquiries
+exist.**
+
+- [ ] **When Railway unfreezes, rotate all five in one pass**, update Railway,
+      Vercel and `server/.env` together, and redeploy both services.
+- [ ] Check the Atlas Activity Feed again afterwards. It was clean on 22 Oct.
+
+### Security — do these in one pass when nothing is moving
+
+- [ ] **Rotate the admin password.** It is currently `ChangeMe123!`, inherited
+      from `SEED_ADMIN_PASSWORD` in a development `.env`. Comment that line out,
+      then re-run `create-admin` so a generated one is printed once and Sharjeel
+      is the only person who knows it.
+- [ ] **Rotate `REVALIDATE_SECRET`** — briefly published as a public DNS TXT
+      record, and the same value is in use on Railway, Vercel and both local env
+      files. Low severity: it guards only `POST /api/revalidate`, which clears
+      cached pages — no data, no admin, no database. Rotate as **two pairs**: dev
+      (`server/.env` + `client/.env.local`) and production (Railway + Vercel), a
+      different value each. Vercel needs a rebuild, not just a variable change.
+- [ ] **Rotate the Cloudinary API secret** — pasted into a chat
+- [ ] **Rotate the Atlas database password** — pasted into a chat, and the Atlas
+      allowlist is `0.0.0.0/0`, so that password is the only control on the data
+- [ ] **Narrow the Atlas allowlist.** Railway Pro offers Static Outbound IPs —
+      enable it and replace `0.0.0.0/0` with that single address. This was
+      genuinely impossible on the trial and is now merely unticked.
+- [ ] **Untick PDF and ZIP** in Cloudinary → Settings → Security → Restricted
       media types, or every datasheet link in an alert email returns 401
-- [ ] **Register fasttraders.co** on his card, auto-renew on
-- [ ] **Gmail 2-Step Verification** on his phone, backup codes on paper
-- [ ] **Gmail app password**, 16 characters — the only way SMTP works since 2025
-- [ ] **Production Atlas cluster** + database user, connection string noted
-- [ ] **Transfer the GitHub repo**, confirm it is private
-- [ ] **Railway project** on his GitHub login, Hobby plan, card added
-- [ ] **Vercel project** on his GitHub login, **Pro** plan (Hobby forbids commercial use)
-- [ ] **Generate three production secrets** — both JWT secrets and `REVALIDATE_SECRET`
-- [ ] **Fill the Railway and Vercel variables** from the tables below
-- [ ] **`npm run seed:live`** against production — reference data, no demo products
-- [ ] **`npm run create-admin`** with his email; he types the password
+
+### Known gaps, not blocking
+
+- [ ] **No change-password screen.** `PATCH /auth/me/password` exists; nothing
+      calls it. Sharjeel cannot rotate his own password without you and a
+      terminal — and that CLI path was itself broken until recently.
+- [ ] **`skipAuthRefresh` is never passed.** A failed login fires a pointless
+      `POST /auth/refresh` before showing the error. On 3G that is a second of
+      apparent nothing on a mistyped password.
+- [ ] **Dev and production share one Atlas cluster**, separated only by database
+      name. Acceptable; separate clusters would be better.
+- [ ] **No backups.** Atlas M0 has no snapshots. See `MAINTENANCE.md` §1.
+- [ ] **Google Business Profile and Search Console** — worth more for local trade
+      than any on-page SEO.
 - [ ] **Walk the seven acceptance checks** in Session 3, on his phone, on mobile data
 
 ### Not moving, deliberately
