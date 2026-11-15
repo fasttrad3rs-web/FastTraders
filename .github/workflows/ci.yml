@@ -35,7 +35,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # 159 tests across 12 suites. Includes price-leak.test.ts, which poisons
+      # 224 tests across 22 suites. Includes price-leak.test.ts, which poisons
       # every model and asserts no cost data survives to a public response.
       - name: Test
         run: npm run test
@@ -46,10 +46,17 @@ jobs:
       - name: Build client
         run: npm run build:client
         env:
-          # The build only needs these to be present and well-formed; no real
-          # service is contacted, and no secret belongs in a CI log.
+          # `client/src/lib/env.ts` parses its schema at module load, so a
+          # missing variable throws during `next build` rather than at runtime.
+          # EVERY variable in that schema must appear here — the first version
+          # of this step listed two of the three, so CI failed on every run
+          # from the day it was written until somebody read the log.
+          #
+          # These only need to be present and well-formed; no real service is
+          # contacted, and no secret belongs in a CI log.
           NEXT_PUBLIC_API_URL: https://api.example.invalid/api/v1
           NEXT_PUBLIC_SITE_URL: https://www.fasttraders.co
+          NEXT_PUBLIC_WHATSAPP_NUMBER: '923244234990'
 
       # Must follow the build: it reads client/.next.
       - name: Scan built bundle for admin-only field names

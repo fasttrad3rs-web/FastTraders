@@ -1135,6 +1135,32 @@ check('Every field the product form sends is accepted by the server', () => {
   return gaps.length === 0 || `sent but silently stripped by the server: ${gaps.join(', ')}`;
 });
 
+check('CI supplies every variable the client build validates', () => {
+  /*
+   * `client/src/lib/env.ts` parses its schema at module load, so a missing
+   * variable throws during `next build` — not at runtime, and not in any test.
+   *
+   * The CI workflow listed two of the three, so the build step failed on every
+   * run from the day it was written. Nothing else noticed: the tests pass, the
+   * audits pass, and the local build works because `.env.local` is present.
+   * Only the workflow log said so, and nobody reads a log that has never been
+   * green.
+   */
+  const schema = code('client/src/lib/env.ts');
+  const block = /clientEnvSchema = z\.object\(\{([\s\S]*?)\n\}\)/.exec(schema);
+  if (!block) return 'clientEnvSchema not found';
+
+  const required = [...block[1].matchAll(/^\s{2}(NEXT_PUBLIC_\w+):/gm)].map((m) => m[1]);
+  if (required.length === 0) return 'no NEXT_PUBLIC_ variables parsed from the schema';
+
+  const workflow = read('.github/workflows/ci.yml');
+  const buildStep = /- name: Build client[\s\S]*?(?=\n      - name:|$)/.exec(workflow);
+  if (!buildStep) return 'the "Build client" step was not found in ci.yml';
+
+  const missing = required.filter((name) => !buildStep[0].includes(`${name}:`));
+  return missing.length === 0 || `ci.yml build step is missing: ${missing.join(', ')}`;
+});
+
 check('Product form mirrors the server invariants', () => {
   /*
    * Both refines exist on `createProductSchema`. Without a matching pair on the
