@@ -10,6 +10,7 @@ import { Field } from '@/components/ui/label';
 import { Input, Textarea } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { apiClient } from '@/lib/api-client';
+import { adminLink, notifyEnquiry } from '@/lib/notify';
 import { contactSchema } from '@/lib/forms';
 import { useFormToken } from '@/hooks/use-form-token';
 import { HoneypotField } from '@/components/shared/honeypot-field';
@@ -38,6 +39,26 @@ export function ContactForm(): JSX.Element {
         ...(formToken() ? { formToken: formToken() } : {}),
         source: 'contact_form',
       });
+
+      /*
+       * Only after the API has accepted it. That call is what writes the
+       * Contact to the database — the notification is a convenience on top,
+       * never a substitute, and it is not awaited so a slow third party
+       * cannot delay the customer's confirmation.
+       */
+      notifyEnquiry({
+        subject: `Contact form — ${values.subject}`,
+        from_name: values.name,
+        // Phone is optional on this form and email is required — the reverse
+        // of the inquiry forms, where a phone number is the whole point.
+        from_phone: values.phone ?? '',
+        from_email: values.email,
+        company: '',
+        message: values.message,
+        details: '',
+        admin_link: adminLink('/admin/contacts'),
+      });
+
       reset();
       setSent(true);
     } catch (caught) {

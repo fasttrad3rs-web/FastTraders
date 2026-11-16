@@ -23,6 +23,19 @@ const clientEnvSchema = z.object({
     .string()
     .regex(/^\d{10,15}$/, 'NEXT_PUBLIC_WHATSAPP_NUMBER must be 10-15 digits, no + or spaces'),
 
+  /*
+   * EmailJS, for browser-side enquiry notifications. All three optional and
+   * all three required together — `notify.ts` stays silent unless the set is
+   * complete, so local development, CI and preview builds work untouched.
+   *
+   * Optional is the important part. These are the only variables here that a
+   * build can legitimately be missing, and making them required would break
+   * `next build` everywhere they are not set — which is exactly how CI stayed
+   * red for two months on a missing WhatsApp number.
+   */
+  NEXT_PUBLIC_EMAILJS_SERVICE_ID: z.string().trim().min(1).optional(),
+  NEXT_PUBLIC_EMAILJS_TEMPLATE_ID: z.string().trim().min(1).optional(),
+  NEXT_PUBLIC_EMAILJS_PUBLIC_KEY: z.string().trim().min(1).optional(),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
@@ -31,6 +44,11 @@ const parsed = clientEnvSchema.safeParse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   NEXT_PUBLIC_WHATSAPP_NUMBER: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
+  // Written out in full, like the rest: Next only inlines `process.env.X` when
+  // it sees the property access literally in the source.
+  NEXT_PUBLIC_EMAILJS_SERVICE_ID: process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
+  NEXT_PUBLIC_EMAILJS_TEMPLATE_ID: process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
+  NEXT_PUBLIC_EMAILJS_PUBLIC_KEY: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY,
 });
 
 if (!parsed.success) {

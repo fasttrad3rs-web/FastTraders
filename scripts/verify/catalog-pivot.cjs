@@ -1150,8 +1150,22 @@ check('CI supplies every variable the client build validates', () => {
   const block = /clientEnvSchema = z\.object\(\{([\s\S]*?)\n\}\)/.exec(schema);
   if (!block) return 'clientEnvSchema not found';
 
-  const required = [...block[1].matchAll(/^\s{2}(NEXT_PUBLIC_\w+):/gm)].map((m) => m[1]);
-  if (required.length === 0) return 'no NEXT_PUBLIC_ variables parsed from the schema';
+  /*
+   * Only the ones a build would actually die without. An `.optional()` entry
+   * — EmailJS, say — is absent by design in CI and in local development, and
+   * demanding it here would fail the check for a correct configuration.
+   *
+   * Each entry is sliced from its own name to the next, because a declaration
+   * can span several lines and `.optional()` may sit on any of them.
+   */
+  const names = [...block[1].matchAll(/^\s{2}(NEXT_PUBLIC_\w+):/gm)];
+  if (names.length === 0) return 'no NEXT_PUBLIC_ variables parsed from the schema';
+
+  const required = names.filter((match, i) => {
+    const start = match.index ?? 0;
+    const end = i + 1 < names.length ? names[i + 1].index : block[1].length;
+    return !block[1].slice(start, end).includes('.optional()');
+  }).map((m) => m[1]);
 
   const workflow = read('.github/workflows/ci.yml');
   const buildStep = /- name: Build client[\s\S]*?(?=\n      - name:|$)/.exec(workflow);
